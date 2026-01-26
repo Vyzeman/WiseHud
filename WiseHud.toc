@@ -1,0 +1,29 @@
+## Interface: 120000
+## Title: WiseHud
+## Notes: Customizable HUD displaying health, power, and combo point orbs with smooth animations.
+## Author: Wiseman
+## Version: 0.1.0
+## SavedVariables: WiseHudDB
+## OptionalDeps: LibSharedMedia-3.0
+## X-Category: Combat
+## X-Website: 
+## X-License: MIT
+
+# LibStub (must load first)
+libs\LibStub\LibStub.lua
+
+# CallbackHandler (required by LibSharedMedia)
+libs\CallbackHandler-1.0\CallbackHandler-1.0.lua
+
+# LibSharedMedia-3.0 (load directly, not via XML)
+libs\LibSharedMedia-3.0\LibSharedMedia-3.0\LibSharedMedia-3.0.lua
+
+# Main addon files
+WiseHud.lua
+modules\Core.lua
+modules\Health.lua
+modules\Power.lua
+modules\Orbs.lua
+modules\Cast.lua
+modules\Options.lua
+
