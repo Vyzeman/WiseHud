@@ -25,5 +25,12 @@ modules\Health.lua
 modules\Power.lua
 modules\Orbs.lua
 modules\Cast.lua
+
+# Options panel (must load in order)
+modules\options\Helpers.lua
+modules\options\BaseTab.lua
+modules\options\OrbResourceTab.lua
+modules\options\HealthPowerTab.lua
+modules\options\CastBarTab.lua
 modules\Options.lua
 
