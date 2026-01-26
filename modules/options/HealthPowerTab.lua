@@ -75,8 +75,8 @@ function HealthPowerTab:Create()
   end)
   e.heightSlider:SetPoint("TOPLEFT", e.widthSlider, "BOTTOMLEFT", 0, -20)
   
-  -- Distance X
-  e.offsetSlider = Helpers.CreateSlider(e.layoutSection, "WiseHudBarOffsetSlider", "Distance X", 170, 200, 5, layout.offset or 200, nil, function(self, value)
+  -- Distance X (expanded range so default 200 is not at the edge)
+  e.offsetSlider = Helpers.CreateSlider(e.layoutSection, "WiseHudBarOffsetSlider", "Distance X", 150, 250, 5, layout.offset or 200, nil, function(self, value)
     local cfg = Helpers.ensureLayoutTable()
     cfg.offset = value
     if WiseHudHealth_ApplyLayout then WiseHudHealth_ApplyLayout() end
@@ -243,6 +243,81 @@ end
 function HealthPowerTab:Refresh()
   if self.UpdateHealthColorSwatch then self.UpdateHealthColorSwatch() end
   if self.UpdatePowerColorSwatch then self.UpdatePowerColorSwatch() end
+  
+  -- Reload values from config and update sliders
+  local healthCfg = Helpers.ensureLayoutTable()
+  local alphaCfg = Helpers.ensureAlphaTable()
+  local e = self.elements
+  
+  -- Helper function to refresh a slider with a value from config
+  local function RefreshSlider(sliderContainer, configValue, defaultValue)
+    if not sliderContainer or not sliderContainer.slider then return end
+    
+    local value = configValue
+    if value == nil then
+      value = defaultValue
+    end
+    
+    -- Ensure value is a number
+    value = tonumber(value)
+    if not value then return end
+    
+    -- Expand range if needed
+    if sliderContainer.ExpandSliderRange then
+      sliderContainer.ExpandSliderRange(value)
+    end
+    
+    -- Update slider range if it was expanded
+    if sliderContainer.currentMin and sliderContainer.currentMax then
+      sliderContainer.slider:SetMinMaxValues(sliderContainer.currentMin, sliderContainer.currentMax)
+      local sliderName = sliderContainer.slider:GetName()
+      if _G[sliderName .. "Low"] then
+        _G[sliderName .. "Low"]:SetText(tostring(sliderContainer.currentMin))
+      end
+      if _G[sliderName .. "High"] then
+        _G[sliderName .. "High"]:SetText(tostring(sliderContainer.currentMax))
+      end
+    end
+    
+    -- Round value to step
+    local step = sliderContainer.step or 1
+    local roundedValue
+    if step < 1 then
+      roundedValue = math.floor(value / step + 0.5) * step
+    else
+      roundedValue = math.floor(value + 0.5)
+    end
+    
+    -- Ensure value is within range
+    local minVal = sliderContainer.currentMin or sliderContainer.initialMin
+    local maxVal = sliderContainer.currentMax or sliderContainer.initialMax
+    roundedValue = math.max(minVal, math.min(maxVal, roundedValue))
+    
+    -- Set slider value
+    sliderContainer.slider:SetValue(roundedValue)
+    
+    -- Update display
+    if sliderContainer.UpdateDisplay then
+      sliderContainer.UpdateDisplay(roundedValue)
+    end
+  end
+  
+  -- Refresh all sliders with their config values
+  RefreshSlider(e.widthSlider, healthCfg.width, 260)
+  RefreshSlider(e.heightSlider, healthCfg.height, 415)
+  RefreshSlider(e.offsetSlider, healthCfg.offset, 200)
+  RefreshSlider(e.offsetYSlider, healthCfg.offsetY, 100)
+  RefreshSlider(e.combatAlphaSlider, alphaCfg.combatAlpha, 40)
+  RefreshSlider(e.nonFullAlphaSlider, alphaCfg.nonFullAlpha, 20)
+  RefreshSlider(e.fullIdleAlphaSlider, alphaCfg.fullIdleAlpha, 0)
+  
+  -- Update checkboxes
+  if e.healthEnabledCheckbox then
+    e.healthEnabledCheckbox:SetChecked(healthCfg.healthEnabled ~= false)
+  end
+  if e.powerEnabledCheckbox then
+    e.powerEnabledCheckbox:SetChecked(healthCfg.powerEnabled ~= false)
+  end
 end
 
 function HealthPowerTab:Reset()
@@ -266,15 +341,36 @@ function HealthPowerTab:Reset()
   alphaCfg.fullIdleAlpha = nil
   
   local e = self.elements
-  if e.widthSlider and e.widthSlider.slider then e.widthSlider.slider:SetValue(260) end
-  if e.heightSlider and e.heightSlider.slider then e.heightSlider.slider:SetValue(415) end
-  if e.offsetSlider and e.offsetSlider.slider then e.offsetSlider.slider:SetValue(200) end
-  if e.offsetYSlider and e.offsetYSlider.slider then e.offsetYSlider.slider:SetValue(100) end
+  if e.widthSlider and e.widthSlider.slider then 
+    e.widthSlider.slider:SetValue(260)
+    if e.widthSlider.UpdateDisplay then e.widthSlider.UpdateDisplay(260) end
+  end
+  if e.heightSlider and e.heightSlider.slider then 
+    e.heightSlider.slider:SetValue(415)
+    if e.heightSlider.UpdateDisplay then e.heightSlider.UpdateDisplay(415) end
+  end
+  if e.offsetSlider and e.offsetSlider.slider then 
+    e.offsetSlider.slider:SetValue(200)
+    if e.offsetSlider.UpdateDisplay then e.offsetSlider.UpdateDisplay(200) end
+  end
+  if e.offsetYSlider and e.offsetYSlider.slider then 
+    e.offsetYSlider.slider:SetValue(100)
+    if e.offsetYSlider.UpdateDisplay then e.offsetYSlider.UpdateDisplay(100) end
+  end
   if e.healthEnabledCheckbox then e.healthEnabledCheckbox:SetChecked(true) end
   if e.powerEnabledCheckbox then e.powerEnabledCheckbox:SetChecked(true) end
-  if e.combatAlphaSlider and e.combatAlphaSlider.slider then e.combatAlphaSlider.slider:SetValue(40) end
-  if e.nonFullAlphaSlider and e.nonFullAlphaSlider.slider then e.nonFullAlphaSlider.slider:SetValue(20) end
-  if e.fullIdleAlphaSlider and e.fullIdleAlphaSlider.slider then e.fullIdleAlphaSlider.slider:SetValue(0) end
+  if e.combatAlphaSlider and e.combatAlphaSlider.slider then 
+    e.combatAlphaSlider.slider:SetValue(40)
+    if e.combatAlphaSlider.UpdateDisplay then e.combatAlphaSlider.UpdateDisplay(40) end
+  end
+  if e.nonFullAlphaSlider and e.nonFullAlphaSlider.slider then 
+    e.nonFullAlphaSlider.slider:SetValue(20)
+    if e.nonFullAlphaSlider.UpdateDisplay then e.nonFullAlphaSlider.UpdateDisplay(20) end
+  end
+  if e.fullIdleAlphaSlider and e.fullIdleAlphaSlider.slider then 
+    e.fullIdleAlphaSlider.slider:SetValue(0)
+    if e.fullIdleAlphaSlider.UpdateDisplay then e.fullIdleAlphaSlider.UpdateDisplay(0) end
+  end
   
   if WiseHudHealth_SetEnabled then WiseHudHealth_SetEnabled(true) end
   if WiseHudPower_SetEnabled then WiseHudPower_SetEnabled(true) end

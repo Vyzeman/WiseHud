@@ -185,14 +185,26 @@ local function CreateOptionsPanel()
       orbTab:Show()
       healthPowerTab:Hide()
       castTab:Hide()
+      -- Refresh the tab to ensure values are loaded
+      C_Timer.After(0.05, function()
+        if orbTabInstance then orbTabInstance:Refresh() end
+      end)
     elseif tabID == 2 then
       orbTab:Hide()
       healthPowerTab:Show()
       castTab:Hide()
+      -- Refresh the tab to ensure values are loaded
+      C_Timer.After(0.05, function()
+        if healthPowerTabInstance then healthPowerTabInstance:Refresh() end
+      end)
     else
       orbTab:Hide()
       healthPowerTab:Hide()
       castTab:Show()
+      -- Refresh the tab to ensure values are loaded
+      C_Timer.After(0.05, function()
+        if castTabInstance then castTabInstance:Refresh() end
+      end)
     end
   end
 
@@ -354,6 +366,12 @@ local function CreateOptionsPanel()
   
   -- Also update when panel is shown
   panel:SetScript("OnShow", function()
+    -- Refresh all tabs to ensure values are loaded correctly
+    C_Timer.After(0.05, function()
+      if orbTabInstance then orbTabInstance:Refresh() end
+      if healthPowerTabInstance then healthPowerTabInstance:Refresh() end
+      if castTabInstance then castTabInstance:Refresh() end
+    end)
     C_Timer.After(0.1, function()
       UpdateScrollRangeForTab(selectedTab)
     end)

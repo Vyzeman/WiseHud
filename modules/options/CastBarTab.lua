@@ -428,6 +428,79 @@ function CastBarTab:Refresh()
   end
   if self.UpdateFillColorSwatch then self.UpdateFillColorSwatch() end
   if self.UpdateBgColorSwatch then self.UpdateBgColorSwatch() end
+  
+  -- Reload values from config and update sliders
+  WiseHudDB = WiseHudDB or {}
+  WiseHudDB.castLayout = WiseHudDB.castLayout or {}
+  local castCfg = WiseHudDB.castLayout
+  local e = self.elements
+  
+  -- Helper function to refresh a slider with a value from config
+  local function RefreshSlider(sliderContainer, configValue, defaultValue)
+    if not sliderContainer or not sliderContainer.slider then return end
+    
+    local value = configValue
+    if value == nil then
+      value = defaultValue
+    end
+    
+    -- Ensure value is a number
+    value = tonumber(value)
+    if not value then return end
+    
+    -- Expand range if needed
+    if sliderContainer.ExpandSliderRange then
+      sliderContainer.ExpandSliderRange(value)
+    end
+    
+    -- Update slider range if it was expanded
+    if sliderContainer.currentMin and sliderContainer.currentMax then
+      sliderContainer.slider:SetMinMaxValues(sliderContainer.currentMin, sliderContainer.currentMax)
+      local sliderName = sliderContainer.slider:GetName()
+      if _G[sliderName .. "Low"] then
+        _G[sliderName .. "Low"]:SetText(tostring(sliderContainer.currentMin))
+      end
+      if _G[sliderName .. "High"] then
+        _G[sliderName .. "High"]:SetText(tostring(sliderContainer.currentMax))
+      end
+    end
+    
+    -- Round value to step
+    local step = sliderContainer.step or 1
+    local roundedValue
+    if step < 1 then
+      roundedValue = math.floor(value / step + 0.5) * step
+    else
+      roundedValue = math.floor(value + 0.5)
+    end
+    
+    -- Ensure value is within range
+    local minVal = sliderContainer.currentMin or sliderContainer.initialMin
+    local maxVal = sliderContainer.currentMax or sliderContainer.initialMax
+    roundedValue = math.max(minVal, math.min(maxVal, roundedValue))
+    
+    -- Set slider value
+    sliderContainer.slider:SetValue(roundedValue)
+    
+    -- Update display
+    if sliderContainer.UpdateDisplay then
+      sliderContainer.UpdateDisplay(roundedValue)
+    end
+  end
+  
+  -- Refresh all sliders with their config values
+  RefreshSlider(e.widthSlider, castCfg.width, 200)
+  RefreshSlider(e.heightSlider, castCfg.height, 20)
+  RefreshSlider(e.xSlider, castCfg.offsetX, 0)
+  RefreshSlider(e.ySlider, castCfg.offsetY, -200)
+  
+  -- Update checkboxes
+  if e.enabledCheckbox then
+    e.enabledCheckbox:SetChecked(castCfg.enabled ~= false)
+  end
+  if e.showTextCheck then
+    e.showTextCheck:SetChecked(castCfg.showText ~= false)
+  end
 end
 
 function CastBarTab:Reset()
@@ -452,10 +525,22 @@ function CastBarTab:Reset()
   castCfg.showText = nil
   
   local e = self.elements
-  if e.widthSlider and e.widthSlider.slider then e.widthSlider.slider:SetValue(200) end
-  if e.heightSlider and e.heightSlider.slider then e.heightSlider.slider:SetValue(20) end
-  if e.xSlider and e.xSlider.slider then e.xSlider.slider:SetValue(0) end
-  if e.ySlider and e.ySlider.slider then e.ySlider.slider:SetValue(-200) end
+  if e.widthSlider and e.widthSlider.slider then 
+    e.widthSlider.slider:SetValue(200)
+    if e.widthSlider.UpdateDisplay then e.widthSlider.UpdateDisplay(200) end
+  end
+  if e.heightSlider and e.heightSlider.slider then 
+    e.heightSlider.slider:SetValue(20)
+    if e.heightSlider.UpdateDisplay then e.heightSlider.UpdateDisplay(20) end
+  end
+  if e.xSlider and e.xSlider.slider then 
+    e.xSlider.slider:SetValue(0)
+    if e.xSlider.UpdateDisplay then e.xSlider.UpdateDisplay(0) end
+  end
+  if e.ySlider and e.ySlider.slider then 
+    e.ySlider.slider:SetValue(-200)
+    if e.ySlider.UpdateDisplay then e.ySlider.UpdateDisplay(-200) end
+  end
   if e.enabledCheckbox then e.enabledCheckbox:SetChecked(true) end
   if e.showTextCheck then e.showTextCheck:SetChecked(true) end
   if e.textureDropdown then

@@ -222,7 +222,7 @@ function OrbResourceTab:Create()
   e.xSlider:SetPoint("TOPLEFT", e.positionSection, "TOPLEFT", 12, -12)
   
   -- Combo Points Y Position
-  e.ySlider = Helpers.CreateSlider(e.positionSection, "WiseHudOrbsYSlider", "Y Position", -200, 80, 5, comboCfg.y or -60, nil, function(self, value)
+  e.ySlider = Helpers.CreateSlider(e.positionSection, "WiseHudOrbsYSlider", "Y Position", -200, 80, 5, comboCfg.y or -50, nil, function(self, value)
     local cfg = Helpers.ensureComboTable()
     cfg.y = value
     if WiseHudOrbs_ApplyLayout then WiseHudOrbs_ApplyLayout() end
@@ -230,7 +230,7 @@ function OrbResourceTab:Create()
   e.ySlider:SetPoint("TOPLEFT", e.xSlider, "BOTTOMLEFT", 0, -20)
   
   -- Combo Points Radius
-  e.radiusSlider = Helpers.CreateSlider(e.positionSection, "WiseHudOrbsRadiusSlider", "Radius", 20, 80, 5, comboCfg.radius or 50, nil, function(self, value)
+  e.radiusSlider = Helpers.CreateSlider(e.positionSection, "WiseHudOrbsRadiusSlider", "Radius", 20, 80, 5, comboCfg.radius or 35, nil, function(self, value)
     local cfg = Helpers.ensureComboTable()
     cfg.radius = value
     if WiseHudOrbs_ApplyLayout then WiseHudOrbs_ApplyLayout() end
@@ -252,7 +252,7 @@ function OrbResourceTab:Create()
   e.cameraSection:SetPoint("TOPLEFT", self.parent, "TOPLEFT", 20, yOffset)
   
   -- Camera X Position
-  e.cameraXSlider = Helpers.CreateSlider(e.cameraSection, "WiseHudOrbsCameraXSlider", "Camera X", -3.0, 0.0, 0.1, comboCfg.cameraX or -1.2, "%.1f", function(self, value)
+  e.cameraXSlider = Helpers.CreateSlider(e.cameraSection, "WiseHudOrbsCameraXSlider", "Camera X", -3.0, 0.0, 0.1, comboCfg.cameraX or -3.0, "%.1f", function(self, value)
     local cfg = Helpers.ensureComboTable()
     cfg.cameraX = value
     if WiseHudOrbs_UpdateCameraPosition then
@@ -272,7 +272,7 @@ function OrbResourceTab:Create()
   e.cameraYSlider:SetPoint("TOPLEFT", e.cameraXSlider, "BOTTOMLEFT", 0, -20)
   
   -- Camera Z Position
-  e.cameraZSlider = Helpers.CreateSlider(e.cameraSection, "WiseHudOrbsCameraZSlider", "Camera Z", -2.0, 2.0, 0.1, comboCfg.cameraZ or 0.0, "%.1f", function(self, value)
+  e.cameraZSlider = Helpers.CreateSlider(e.cameraSection, "WiseHudOrbsCameraZSlider", "Camera Z", -2.0, 2.0, 0.1, comboCfg.cameraZ or -1.7, "%.1f", function(self, value)
     local cfg = Helpers.ensureComboTable()
     cfg.cameraZ = value
     if WiseHudOrbs_UpdateCameraPosition then
@@ -305,6 +305,79 @@ function OrbResourceTab:Refresh()
   if self.SetModelIdText then
     self.SetModelIdText()
   end
+  
+  -- Reload values from config and update sliders
+  local comboCfg = Helpers.ensureComboTable()
+  local e = self.elements
+  
+  -- Helper function to refresh a slider with a value from config
+  local function RefreshSlider(sliderContainer, configValue, defaultValue)
+    if not sliderContainer or not sliderContainer.slider then return end
+    
+    local value = configValue
+    if value == nil then
+      value = defaultValue
+    end
+    
+    -- Ensure value is a number
+    value = tonumber(value)
+    if not value then return end
+    
+    -- Expand range if needed
+    if sliderContainer.ExpandSliderRange then
+      sliderContainer.ExpandSliderRange(value)
+    end
+    
+    -- Update slider range if it was expanded
+    if sliderContainer.currentMin and sliderContainer.currentMax then
+      sliderContainer.slider:SetMinMaxValues(sliderContainer.currentMin, sliderContainer.currentMax)
+      local sliderName = sliderContainer.slider:GetName()
+      if _G[sliderName .. "Low"] then
+        _G[sliderName .. "Low"]:SetText(tostring(sliderContainer.currentMin))
+      end
+      if _G[sliderName .. "High"] then
+        _G[sliderName .. "High"]:SetText(tostring(sliderContainer.currentMax))
+      end
+    end
+    
+    -- Round value to step
+    local step = sliderContainer.step or 1
+    local roundedValue
+    if step < 1 then
+      roundedValue = math.floor(value / step + 0.5) * step
+    else
+      roundedValue = math.floor(value + 0.5)
+    end
+    
+    -- Ensure value is within range
+    local minVal = sliderContainer.currentMin or sliderContainer.initialMin
+    local maxVal = sliderContainer.currentMax or sliderContainer.initialMax
+    roundedValue = math.max(minVal, math.min(maxVal, roundedValue))
+    
+    -- Set slider value
+    sliderContainer.slider:SetValue(roundedValue)
+    
+    -- Update display
+    if sliderContainer.UpdateDisplay then
+      sliderContainer.UpdateDisplay(roundedValue)
+    end
+  end
+  
+  -- Refresh all sliders with their config values
+  RefreshSlider(e.xSlider, comboCfg.x, 0)
+  RefreshSlider(e.ySlider, comboCfg.y, -50)
+  RefreshSlider(e.radiusSlider, comboCfg.radius, 35)
+  RefreshSlider(e.cameraXSlider, comboCfg.cameraX, -3.0)
+  RefreshSlider(e.cameraYSlider, comboCfg.cameraY, 0.0)
+  RefreshSlider(e.cameraZSlider, comboCfg.cameraZ, -1.7)
+  
+  -- Update checkboxes
+  if e.enabledCheckbox then
+    e.enabledCheckbox:SetChecked(comboCfg.enabled ~= false)
+  end
+  if e.testModeCheckbox then
+    e.testModeCheckbox:SetChecked(comboCfg.testMode == true)
+  end
 end
 
 function OrbResourceTab:Reset()
@@ -320,12 +393,30 @@ function OrbResourceTab:Reset()
   comboCfg.modelId = nil
   
   local e = self.elements
-  if e.xSlider and e.xSlider.slider then e.xSlider.slider:SetValue(0) end
-  if e.ySlider and e.ySlider.slider then e.ySlider.slider:SetValue(-60) end
-  if e.radiusSlider and e.radiusSlider.slider then e.radiusSlider.slider:SetValue(50) end
-  if e.cameraXSlider and e.cameraXSlider.slider then e.cameraXSlider.slider:SetValue(-1.2) end
-  if e.cameraYSlider and e.cameraYSlider.slider then e.cameraYSlider.slider:SetValue(0.0) end
-  if e.cameraZSlider and e.cameraZSlider.slider then e.cameraZSlider.slider:SetValue(0.0) end
+  if e.xSlider and e.xSlider.slider then 
+    e.xSlider.slider:SetValue(0)
+    if e.xSlider.UpdateDisplay then e.xSlider.UpdateDisplay(0) end
+  end
+  if e.ySlider and e.ySlider.slider then 
+    e.ySlider.slider:SetValue(-50)
+    if e.ySlider.UpdateDisplay then e.ySlider.UpdateDisplay(-50) end
+  end
+  if e.radiusSlider and e.radiusSlider.slider then 
+    e.radiusSlider.slider:SetValue(35)
+    if e.radiusSlider.UpdateDisplay then e.radiusSlider.UpdateDisplay(35) end
+  end
+  if e.cameraXSlider and e.cameraXSlider.slider then 
+    e.cameraXSlider.slider:SetValue(-3.0)
+    if e.cameraXSlider.UpdateDisplay then e.cameraXSlider.UpdateDisplay(-3.0) end
+  end
+  if e.cameraYSlider and e.cameraYSlider.slider then 
+    e.cameraYSlider.slider:SetValue(0.0)
+    if e.cameraYSlider.UpdateDisplay then e.cameraYSlider.UpdateDisplay(0.0) end
+  end
+  if e.cameraZSlider and e.cameraZSlider.slider then 
+    e.cameraZSlider.slider:SetValue(-1.7)
+    if e.cameraZSlider.UpdateDisplay then e.cameraZSlider.UpdateDisplay(-1.7) end
+  end
   if e.enabledCheckbox then e.enabledCheckbox:SetChecked(true) end
   if e.testModeCheckbox then e.testModeCheckbox:SetChecked(false) end
   if e.modelIdEditBox and self.GetDefaultModelId then
