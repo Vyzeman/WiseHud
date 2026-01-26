@@ -71,7 +71,7 @@ Current Version: **0.1.0**
 
 ## Author
 
-Wiseman
+Vyzeman
 
 ## License
 
