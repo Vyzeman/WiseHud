@@ -76,7 +76,7 @@ function HealthPowerTab:Create()
   e.heightSlider:SetPoint("TOPLEFT", e.widthSlider, "BOTTOMLEFT", 0, -20)
   
   -- Distance X
-  e.offsetSlider = Helpers.CreateSlider(e.layoutSection, "WiseHudBarOffsetSlider", "Distance X", 170, 200, 5, layout.offset or 185, nil, function(self, value)
+  e.offsetSlider = Helpers.CreateSlider(e.layoutSection, "WiseHudBarOffsetSlider", "Distance X", 170, 200, 5, layout.offset or 200, nil, function(self, value)
     local cfg = Helpers.ensureLayoutTable()
     cfg.offset = value
     if WiseHudHealth_ApplyLayout then WiseHudHealth_ApplyLayout() end
@@ -85,7 +85,7 @@ function HealthPowerTab:Create()
   e.offsetSlider:SetPoint("TOPLEFT", e.heightSlider, "BOTTOMLEFT", 0, -20)
   
   -- Distance Y
-  e.offsetYSlider = Helpers.CreateSlider(e.layoutSection, "WiseHudBarOffsetYSlider", "Distance Y", -20, 200, 5, layout.offsetY or 90, nil, function(self, value)
+  e.offsetYSlider = Helpers.CreateSlider(e.layoutSection, "WiseHudBarOffsetYSlider", "Distance Y", -20, 200, 5, layout.offsetY or 100, nil, function(self, value)
     local cfg = Helpers.ensureLayoutTable()
     cfg.offsetY = value
     if WiseHudHealth_ApplyLayout then WiseHudHealth_ApplyLayout() end
@@ -109,7 +109,7 @@ function HealthPowerTab:Create()
   e.alphaSection:SetPoint("TOPLEFT", self.parent, "TOPLEFT", 20, yOffset)
   
   -- Combat Alpha
-  e.combatAlphaSlider = Helpers.CreateSlider(e.alphaSection, "WiseHudCombatAlphaSlider", "Combat Alpha", 0, 100, 5, alphaCfg.combatAlpha or 70, "%d%%", function(self, value)
+  e.combatAlphaSlider = Helpers.CreateSlider(e.alphaSection, "WiseHudCombatAlphaSlider", "Combat Alpha", 0, 100, 5, alphaCfg.combatAlpha or 40, "%d%%", function(self, value)
     local cfg = Helpers.ensureAlphaTable()
     cfg.combatAlpha = value
     if WiseHudHealth_ApplyAlpha then WiseHudHealth_ApplyAlpha() end
@@ -118,7 +118,7 @@ function HealthPowerTab:Create()
   e.combatAlphaSlider:SetPoint("TOPLEFT", e.alphaSection, "TOPLEFT", 12, -12)
   
   -- Not full, no combat
-  e.nonFullAlphaSlider = Helpers.CreateSlider(e.alphaSection, "WiseHudNonFullAlphaSlider", "Not Full (ooc)", 0, 100, 5, alphaCfg.nonFullAlpha or 40, "%d%%", function(self, value)
+  e.nonFullAlphaSlider = Helpers.CreateSlider(e.alphaSection, "WiseHudNonFullAlphaSlider", "Not Full (ooc)", 0, 100, 5, alphaCfg.nonFullAlpha or 20, "%d%%", function(self, value)
     local cfg = Helpers.ensureAlphaTable()
     cfg.nonFullAlpha = value
     if WiseHudHealth_ApplyAlpha then WiseHudHealth_ApplyAlpha() end
@@ -221,6 +221,23 @@ function HealthPowerTab:Create()
   )
   e.powerColorButton:SetPoint("TOPLEFT", powerColorLabel, "BOTTOMLEFT", 0, -8)
   self.UpdatePowerColorSwatch()
+  
+  -- Calculate yOffset for reset button: color section bottom + padding
+  yOffset = yOffset - 160 - 40 -- Section height + padding
+  
+  -- Reset Button (positioned at the end of content)
+  e.resetButton = Helpers.CreateResetButton(
+    self.parent,
+    "WiseHudHealthPowerResetButton",
+    "WISEHUD_RESET_HEALTHPOWER",
+    "Are you sure you want to reset all Health/Power settings to their default values?",
+    self,
+    "TOPLEFT",
+    self.parent,
+    "TOPLEFT",
+    20,
+    yOffset
+  )
 end
 
 function HealthPowerTab:Refresh()
@@ -243,21 +260,28 @@ function HealthPowerTab:Reset()
   healthCfg.powerG = nil
   healthCfg.powerB = nil
   
+  local alphaCfg = Helpers.ensureAlphaTable()
+  alphaCfg.combatAlpha = nil
+  alphaCfg.nonFullAlpha = nil
+  alphaCfg.fullIdleAlpha = nil
+  
   local e = self.elements
   if e.widthSlider and e.widthSlider.slider then e.widthSlider.slider:SetValue(260) end
   if e.heightSlider and e.heightSlider.slider then e.heightSlider.slider:SetValue(415) end
-  if e.offsetSlider and e.offsetSlider.slider then e.offsetSlider.slider:SetValue(185) end
-  if e.offsetYSlider and e.offsetYSlider.slider then e.offsetYSlider.slider:SetValue(90) end
+  if e.offsetSlider and e.offsetSlider.slider then e.offsetSlider.slider:SetValue(200) end
+  if e.offsetYSlider and e.offsetYSlider.slider then e.offsetYSlider.slider:SetValue(100) end
   if e.healthEnabledCheckbox then e.healthEnabledCheckbox:SetChecked(true) end
   if e.powerEnabledCheckbox then e.powerEnabledCheckbox:SetChecked(true) end
-  if e.combatAlphaSlider and e.combatAlphaSlider.slider then e.combatAlphaSlider.slider:SetValue(70) end
-  if e.nonFullAlphaSlider and e.nonFullAlphaSlider.slider then e.nonFullAlphaSlider.slider:SetValue(40) end
+  if e.combatAlphaSlider and e.combatAlphaSlider.slider then e.combatAlphaSlider.slider:SetValue(40) end
+  if e.nonFullAlphaSlider and e.nonFullAlphaSlider.slider then e.nonFullAlphaSlider.slider:SetValue(20) end
   if e.fullIdleAlphaSlider and e.fullIdleAlphaSlider.slider then e.fullIdleAlphaSlider.slider:SetValue(0) end
   
   if WiseHudHealth_SetEnabled then WiseHudHealth_SetEnabled(true) end
   if WiseHudPower_SetEnabled then WiseHudPower_SetEnabled(true) end
   if WiseHudHealth_ApplyLayout then WiseHudHealth_ApplyLayout() end
   if WiseHudPower_ApplyLayout then WiseHudPower_ApplyLayout() end
+  if WiseHudHealth_ApplyAlpha then WiseHudHealth_ApplyAlpha() end
+  if WiseHudPower_ApplyAlpha then WiseHudPower_ApplyAlpha() end
   if self.UpdateHealthColorSwatch then self.UpdateHealthColorSwatch() end
   if self.UpdatePowerColorSwatch then self.UpdatePowerColorSwatch() end
 end

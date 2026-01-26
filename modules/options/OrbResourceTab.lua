@@ -282,6 +282,23 @@ function OrbResourceTab:Create()
   e.cameraZSlider:SetPoint("TOPLEFT", e.cameraYSlider, "BOTTOMLEFT", 0, -20)
   
   self.GetDefaultModelId = GetDefaultModelId
+  
+  -- Calculate yOffset for reset button: camera section bottom + padding
+  yOffset = yOffset - 200 - 40 -- Section height + padding
+  
+  -- Reset Button (positioned at the end of content)
+  e.resetButton = Helpers.CreateResetButton(
+    self.parent,
+    "WiseHudOrbsResetButton",
+    "WISEHUD_RESET_ORBS",
+    "Are you sure you want to reset all Orb Resource settings to their default values?",
+    self,
+    "TOPLEFT",
+    self.parent,
+    "TOPLEFT",
+    20,
+    yOffset
+  )
 end
 
 function OrbResourceTab:Refresh()

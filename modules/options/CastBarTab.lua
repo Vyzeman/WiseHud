@@ -400,6 +400,23 @@ function CastBarTab:Create()
   )
   e.bgColorButton:SetPoint("TOPLEFT", bgColorLabel, "BOTTOMLEFT", 0, -8)
   self.UpdateBgColorSwatch()
+  
+  -- Calculate yOffset for reset button: color section bottom + padding
+  yOffset = yOffset - 180 - 40 -- Section height + padding
+  
+  -- Reset Button (positioned at the end of content)
+  e.resetButton = Helpers.CreateResetButton(
+    self.parent,
+    "WiseHudCastResetButton",
+    "WISEHUD_RESET_CASTBAR",
+    "Are you sure you want to reset all Cast Bar settings to their default values?",
+    self,
+    "TOPLEFT",
+    self.parent,
+    "TOPLEFT",
+    20,
+    yOffset
+  )
 end
 
 function CastBarTab:Refresh()

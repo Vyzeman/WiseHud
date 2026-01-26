@@ -296,6 +296,47 @@ local function CheckLSMAvailability()
   return true, "OK"
 end
 
+-- Create a reset button with confirmation dialog
+local function CreateResetButton(parent, buttonName, dialogName, dialogText, tabInstance, anchorPoint, anchorTo, relativePoint, xOffset, yOffset)
+  local resetButton = CreateFrame("Button", buttonName, parent, "UIPanelButtonTemplate")
+  resetButton:SetSize(120, 28)
+  resetButton:SetText("Reset to Default")
+  
+  -- Default to bottom right if no anchor point specified
+  anchorPoint = anchorPoint or "BOTTOMRIGHT"
+  anchorTo = anchorTo or parent
+  relativePoint = relativePoint or "BOTTOMRIGHT"
+  xOffset = xOffset or -20
+  yOffset = yOffset or 20
+  
+  resetButton:SetPoint(anchorPoint, anchorTo, relativePoint, xOffset, yOffset)
+  
+  resetButton:SetScript("OnClick", function()
+    StaticPopup_Show(dialogName, nil, nil, tabInstance)
+  end)
+  
+  -- Register static popup if not already registered
+  if not StaticPopupDialogs[dialogName] then
+    StaticPopupDialogs[dialogName] = {
+      text = dialogText,
+      button1 = "Yes",
+      button2 = "No",
+      OnAccept = function(self, data)
+        local tabInstance = data
+        if tabInstance and tabInstance.Reset then
+          tabInstance:Reset()
+        end
+      end,
+      timeout = 0,
+      whileDead = true,
+      hideOnEscape = true,
+      preferredIndex = 3,
+    }
+  end
+  
+  return resetButton
+end
+
 -- Export functions
 WiseHudOptionsHelpers = {
   ensureLayoutTable = ensureLayoutTable,
@@ -306,4 +347,5 @@ WiseHudOptionsHelpers = {
   CreateColorPicker = CreateColorPicker,
   CreateSectionFrame = CreateSectionFrame,
   CheckLSMAvailability = CheckLSMAvailability,
+  CreateResetButton = CreateResetButton,
 }
