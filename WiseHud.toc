@@ -3,7 +3,7 @@
 ## Notes: Customizable HUD displaying health, power, and combo point orbs with smooth animations.
 ## Author: Wiseman
 ## Version: 1.0.0
-## SavedVariables: WiseHudDB
+## SavedVariablesPerCharacter: WiseHudDB
 ## OptionalDeps: LibSharedMedia-3.0
 ## X-Category: Combat
 ## X-Website: 
