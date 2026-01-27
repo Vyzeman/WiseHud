@@ -4,6 +4,11 @@ local ADDON_NAME = ...
 
 local WiseHud = WiseHudFrame
 
+-- Forward declarations for health bar frames and alpha state
+local healthBar, healthBG
+local currentAlpha = 0
+local targetAlpha  = 0
+
 -- Use flipped foreground texture so the fill follows the inner curve
 local HEALTH_TEXTURE   = "Interface\\AddOns\\WiseHud\\textures\\CleanCurves-flipped"
 local HEALTH_BG        = "Interface\\AddOns\\WiseHud\\textures\\CleanCurvesBG"
@@ -39,10 +44,6 @@ local DEFAULT_ALPHA_COMBAT    = 70
 local DEFAULT_ALPHA_NONFULL   = 40
 local DEFAULT_ALPHA_FULL_IDLE = 0
 
-local healthBar, healthBG
-local currentAlpha = 0
-local targetAlpha  = 0
-
 local function GetBarLayout()
   local cfg = (WiseHudDB and WiseHudDB.barLayout) or {}
   local w  = cfg.width   or DEFAULT_BAR_WIDTH
@@ -67,20 +68,6 @@ local function GetAlphaSettings()
   local nonFull   = cfg.nonFullAlpha   or DEFAULT_ALPHA_NONFULL
   local fullIdle  = cfg.fullIdleAlpha  or DEFAULT_ALPHA_FULL_IDLE
   return combat / 100, nonFull / 100, fullIdle / 100
-end
-
-local function GetHealthPercent()
-  if not UnitHealthPercent then
-    return nil
-  end
-
-  -- UnitHealthPercent is a C-API helper that in the "secret env"
-  -- typically returns safe percentage values.
-  local ok, pct = pcall(UnitHealthPercent, "player", true)
-  if not ok or type(pct) ~= "number" then
-    return nil
-  end
-  return pct
 end
 
 function WiseHudHealth_ApplyAlpha()

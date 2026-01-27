@@ -5,7 +5,7 @@ local ADDON_NAME = ...
 
 -- Debug: Check LibStub availability immediately
 do
-  local libStub = _G.LibStub
+  local libStub = LibStub
   if not libStub then
     print("WiseHud: LibStub not found in global namespace at Options.lua load time")
   elseif type(libStub) ~= "table" then
@@ -30,6 +30,9 @@ local function CreateOptionsPanel()
 
   local panel = CreateFrame("Frame")
   panel.name = "WiseHud"
+
+  -- Forward declarations for tab instances so callbacks see them
+  local orbTabInstance, healthPowerTabInstance, castTabInstance
 
   -- Create tab container
   local tabContainer = CreateFrame("Frame", nil, panel)
@@ -341,9 +344,9 @@ local function CreateOptionsPanel()
   SelectTab(1)
 
   -- Create tab instances (use scrollChild as parent for content)
-  local orbTabInstance = OrbResourceTab:new(orbTabChild, panel)
-  local healthPowerTabInstance = HealthPowerTab:new(healthPowerTabChild, panel)
-  local castTabInstance = CastBarTab:new(castTabChild, panel)
+  orbTabInstance = OrbResourceTab:new(orbTabChild, panel)
+  healthPowerTabInstance = HealthPowerTab:new(healthPowerTabChild, panel)
+  castTabInstance = CastBarTab:new(castTabChild, panel)
   
   -- Create tab contents
   orbTabInstance:Create()

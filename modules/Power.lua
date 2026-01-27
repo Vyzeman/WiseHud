@@ -60,20 +60,6 @@ local function GetAlphaSettings()
   return combat / 100, nonFull / 100, fullIdle / 100
 end
 
-local function GetPowerPercent()
-  if not UnitPowerPercent then
-    return nil
-  end
-
-  local powerType = UnitPowerType("player")
-  -- UnitPowerPercent(unit, powerType[, clamp])
-  local ok, pct = pcall(UnitPowerPercent, "player", powerType, true)
-  if not ok or type(pct) ~= "number" then
-    return nil
-  end
-  return pct
-end
-
 function WiseHudPower_ApplyAlpha()
   if not powerBar or not powerBG then return end
   
