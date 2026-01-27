@@ -93,8 +93,10 @@ local function SetOrbCameraPosition(orb, force)
       pcall(orb.SetPosition, orb, x, y, z)
       pcall(orb.SetFacing, orb, 0)
       pcall(orb.SetAnimation, orb, 0)
+      return true
     end
   end
+  return false
 end
 
 -- Helper function to configure orb model settings
@@ -179,40 +181,25 @@ local function ApplyModelPathToExistingOrbs()
           local ok = pcall(orb.SetModel, orb, asNumber)
           if ok then
             success = true
-            C_Timer.After(0.15, function()
+            C_Timer.After(0.1, function()
               if not orb or not orb.SetModelScale then
                 return
               end
               pcall(orb.SetKeepModelOnHide, orb, true)
               pcall(orb.SetModelScale, orb, 1)
               orb:SetAlpha(1)
-              C_Timer.After(0.05, function()
-                SetOrbCameraPosition(orb)
-                -- Retry camera position after model is confirmed loaded
-                C_Timer.After(0.1, function()
-                  if orb and IsOrbModelReady(orb) then
-                    SetOrbCameraPosition(orb)
-                  end
-                end)
-              end)
             end)
           else
             -- Try SetDisplayInfo as fallback
             local ok2 = pcall(orb.SetDisplayInfo, orb, asNumber)
             if ok2 then
               success = true
-              C_Timer.After(0.05, function()
+              C_Timer.After(0.1, function()
                 if not orb or not orb.SetModelScale then
                   return
                 end
                 ConfigureOrbModel(orb)
                 orb:SetAlpha(1)
-                -- Retry camera position after model is confirmed loaded
-                C_Timer.After(0.1, function()
-                  if orb and IsOrbModelReady(orb) then
-                    SetOrbCameraPosition(orb)
-                  end
-                end)
               end)
             end
           end
@@ -221,22 +208,13 @@ local function ApplyModelPathToExistingOrbs()
           local ok = pcall(orb.SetModel, orb, modelPath)
           if ok then
             success = true
-            C_Timer.After(0.15, function()
+            C_Timer.After(0.1, function()
               if not orb or not orb.SetModelScale then
                 return
               end
               pcall(orb.SetKeepModelOnHide, orb, true)
               pcall(orb.SetModelScale, orb, 1)
               orb:SetAlpha(1)
-              C_Timer.After(0.05, function()
-                SetOrbCameraPosition(orb)
-                -- Retry camera position after model is confirmed loaded
-                C_Timer.After(0.1, function()
-                  if orb and IsOrbModelReady(orb) then
-                    SetOrbCameraPosition(orb)
-                  end
-                end)
-              end)
             end)
           end
         end
@@ -247,9 +225,9 @@ local function ApplyModelPathToExistingOrbs()
   return success, attempted
 end
 
--- Wait for models to load and then set camera position
+-- Wait for models to load and then set camera position for all orbs
 local function WaitForModelsAndSetCamera(maxAttempts, checkInterval)
-  maxAttempts = maxAttempts or 20  -- Maximum number of attempts (20 * 0.1s = 2 seconds max)
+  maxAttempts = maxAttempts or 50  -- Maximum number of attempts (50 * 0.1s = 5 seconds max)
   checkInterval = checkInterval or 0.1  -- Check interval in seconds
   
   local attempts = 0
@@ -257,22 +235,29 @@ local function WaitForModelsAndSetCamera(maxAttempts, checkInterval)
     attempts = attempts + 1
     local allReady = true
     local hasOrbs = false
+    local readyCount = 0
     
     -- Check if all orbs have models loaded
     for _, orb in ipairs(orbs) do
       if orb then
         hasOrbs = true
-        if not IsOrbModelReady(orb) then
+        if IsOrbModelReady(orb) then
+          readyCount = readyCount + 1
+          -- Set camera position as soon as this orb is ready
+          SetOrbCameraPosition(orb, true)
+        else
           allReady = false
-          break
         end
       end
     end
     
-    -- If all models are ready or we've tried enough times, set camera position
+    -- If all models are ready or we've tried enough times, ensure all cameras are set
     if (allReady and hasOrbs) or attempts >= maxAttempts then
-      if WiseHudOrbs_UpdateCameraPosition then
-        WiseHudOrbs_UpdateCameraPosition()
+      -- Final pass: ensure all orbs have camera set
+      for _, orb in ipairs(orbs) do
+        if orb then
+          SetOrbCameraPosition(orb, true)
+        end
       end
     else
       -- Check again after interval
@@ -491,23 +476,11 @@ local function CreateOrbs()
             local ok, err = pcall(orb.SetModel, orb, asNumber)
             if ok then
               ConfigureOrbModel(orb)
-              -- Retry camera position after model is confirmed loaded
-              C_Timer.After(0.15, function()
-                if orb and IsOrbModelReady(orb) then
-                  SetOrbCameraPosition(orb)
-                end
-              end)
             end
           elseif type(modelPath) == "string" then
             local ok, err = pcall(orb.SetModel, orb, modelPath)
             if ok then
               ConfigureOrbModel(orb)
-              -- Retry camera position after model is confirmed loaded
-              C_Timer.After(0.15, function()
-                if orb and IsOrbModelReady(orb) then
-                  SetOrbCameraPosition(orb)
-                end
-              end)
             end
           end
         end
@@ -550,37 +523,22 @@ local function CreateOrbs()
     if asNumber then
       local ok, err = pcall(orb.SetModel, orb, asNumber)
       if ok then
-        C_Timer.After(0.15, function()
+        C_Timer.After(0.1, function()
           if not orb or not orb.SetModelScale then
             return
           end
           pcall(orb.SetKeepModelOnHide, orb, true)
           pcall(orb.SetModelScale, orb, 1)
-          C_Timer.After(0.05, function()
-            SetOrbCameraPosition(orb)
-            -- Retry camera position after model is confirmed loaded
-            C_Timer.After(0.1, function()
-              if orb and IsOrbModelReady(orb) then
-                SetOrbCameraPosition(orb)
-              end
-            end)
-          end)
         end)
         modelLoaded = true
       else
         local ok2, err2 = pcall(orb.SetDisplayInfo, orb, asNumber)
         if ok2 then
-          C_Timer.After(0.05, function()
+          C_Timer.After(0.1, function()
             if not orb or not orb.SetModelScale then
               return
             end
             ConfigureOrbModel(orb)
-            -- Retry camera position after model is confirmed loaded
-            C_Timer.After(0.1, function()
-              if orb and IsOrbModelReady(orb) then
-                SetOrbCameraPosition(orb)
-              end
-            end)
           end)
           modelLoaded = true
         end
@@ -886,15 +844,8 @@ local function UpdateOrbs()
         end
         
         AnimateOrbScale(i, 1.0)
-        -- Set camera position with a small delay to ensure model is ready
+        -- Set camera position if model is ready
         SetOrbCameraPosition(orb)
-        if C_Timer and C_Timer.After then
-          C_Timer.After(0.05, function()
-            if orb and orb.SetPosition then
-              SetOrbCameraPosition(orb)
-            end
-          end)
-        end
       else
         AnimateOrbScale(i, 0.01)
         -- Set camera position even for hidden orbs
@@ -918,33 +869,17 @@ local function EnsureCameraPosition()
         orb:SetScale(1.0)
       end
       
-      -- Always try to set camera position immediately (force it)
+      -- Try to set camera position (force it)
       -- This will read the camera position from settings via GetCameraPosition()
       SetOrbCameraPosition(orb, true)
       
-      -- Set camera position multiple times with delays to ensure it sticks
-      C_Timer.After(0.05, function()
-        if orb and orb.SetPosition then
-          SetOrbCameraPosition(orb, true)
-        end
-      end)
-      C_Timer.After(0.15, function()
-        if orb and orb.SetPosition then
-          SetOrbCameraPosition(orb, true)
-        end
-      end)
-      C_Timer.After(0.3, function()
-        if orb and orb.SetPosition then
-          SetOrbCameraPosition(orb, true)
-          -- Restore original state if orb was hidden/scaled down
-          if not wasShown then
-            orb:Hide()
-          end
-          if wasScaled and wasScaled < 0.1 then
-            orb:SetScale(wasScaled)
-          end
-        end
-      end)
+      -- Restore original state if orb was hidden/scaled down
+      if not wasShown then
+        orb:Hide()
+      end
+      if wasScaled and wasScaled < 0.1 then
+        orb:SetScale(wasScaled)
+      end
     end
   end
 end
@@ -978,49 +913,12 @@ function WiseHudOrbs_OnPlayerLogin()
     end
   end
   
-  -- Set camera position immediately after creation
-  if C_Timer and C_Timer.After then
-    C_Timer.After(0.1, function()
-      EnsureCameraPosition()
-    end)
-    C_Timer.After(0.3, function()
-      EnsureCameraPosition()
-    end)
-  end
-  
   -- Now update orbs (this will hide them if points are 0)
   UpdateOrbs()
   
-  -- Ensure camera position is set after delays (when models are fully loaded)
-  -- Important: Set position even after orbs are hidden (for 0 CP case)
-  -- Use a more aggressive retry strategy to catch models that load slowly
-  if C_Timer and C_Timer.After then
-    C_Timer.After(0.5, function()
-      EnsureCameraPosition()
-      UpdateOrbs()
-    end)
-    C_Timer.After(0.8, function()
-      EnsureCameraPosition()
-    end)
-    C_Timer.After(1.2, function()
-      EnsureCameraPosition()
-      UpdateOrbs()
-    end)
-    C_Timer.After(1.8, function()
-      EnsureCameraPosition()
-    end)
-    C_Timer.After(2.5, function()
-      EnsureCameraPosition()
-    end)
-    -- Additional retry for slow-loading models
-    C_Timer.After(3.5, function()
-      EnsureCameraPosition()
-      UpdateOrbs()
-    end)
-    C_Timer.After(5.0, function()
-      EnsureCameraPosition()
-    end)
-  end
+  -- Wait for models to load and set camera position using polling approach
+  -- This replaces the multiple timer-based retries with a single polling function
+  WaitForModelsAndSetCamera()
 end
 
 function WiseHudOrbs_OnPowerUpdate(unit, powerType)
