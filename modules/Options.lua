@@ -20,9 +20,57 @@ local function CreateOptionsPanel()
   -- Forward declarations for tab instances so callbacks see them
   local orbTabInstance, healthPowerTabInstance, castTabInstance
 
-  -- Create tab container
+  -- Create header with logo/icon - positioned top right
+  local logoFrame = CreateFrame("Frame", nil, panel)
+  logoFrame:SetSize(80, 80)
+  logoFrame:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -16, -16)
+  
+  -- Logo background (subtle border/background) - optional, can be removed if not needed
+  -- local logoBg = logoFrame:CreateTexture(nil, "BACKGROUND")
+  -- logoBg:SetAllPoints(logoFrame)
+  -- logoBg:SetColorTexture(0.1, 0.1, 0.1, 0.5)
+  -- logoBg:SetBlendMode("BLEND")
+  
+  -- Logo/Icon texture - try to load from textures folder first, fallback to WoW icon
+  local logoTexture = logoFrame:CreateTexture(nil, "ARTWORK")
+  logoTexture:SetPoint("CENTER", logoFrame, "CENTER", 0, 0)
+  logoTexture:SetSize(72, 72)
+  
+  -- Try to load logo from textures folder (as BLP)
+  local logoPaths = {
+    "Interface\\AddOns\\WiseHud\\WiseHud_Logo.blp",  -- Root directory
+    "Interface\\AddOns\\WiseHud\\textures\\WiseHud_Logo.blp",  -- Textures folder
+  }
+  
+  local logoLoaded = false
+  for _, path in ipairs(logoPaths) do
+    local success = pcall(function()
+      logoTexture:SetTexture(path)
+    end)
+    if success then
+      -- Check if texture was actually loaded by trying to get it
+      local currentTexture = logoTexture:GetTexture()
+      if currentTexture then
+        logoLoaded = true
+        -- Ensure proper filtering for crisp display
+        logoTexture:SetTexCoord(0, 1, 0, 1)
+        break
+      end
+    end
+  end
+  
+  -- Fallback: Use a nice icon from WoW if logo not found
+  if not logoLoaded then
+    -- Use a simple, clean icon as placeholder
+    logoTexture:SetTexture("Interface\\Icons\\INV_Misc_EngGizmos_19")
+    logoTexture:SetVertexColor(0.4, 0.7, 1.0, 1.0) -- Light blue tint
+  end
+  
+
+  -- Create tab container - positioned below tab buttons
+  -- Tab buttons are at Y=-16 with height 32, so container starts at -16-32-2 = -50
   local tabContainer = CreateFrame("Frame", nil, panel)
-  tabContainer:SetPoint("TOPLEFT", 16, -50)
+  tabContainer:SetPoint("TOPLEFT", panel, "TOPLEFT", 16, -50)  -- Below tab buttons (32px height + 2px margin)
   tabContainer:SetPoint("BOTTOMRIGHT", -16, 16)
 
   -- Helper function to create a scrollable tab
@@ -30,6 +78,8 @@ local function CreateOptionsPanel()
     local scrollFrame = CreateFrame("ScrollFrame", name .. "ScrollFrame", parent)
     scrollFrame:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, 0)
     scrollFrame:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -20, 0) -- Leave space for scrollbar
+    -- Clipping region to prevent content from going into logo area
+    scrollFrame:SetClipsChildren(true)
     
     -- Create scroll child (this is where all content goes)
     local scrollChild = CreateFrame("Frame", name .. "ScrollChild", scrollFrame)
@@ -43,9 +93,9 @@ local function CreateOptionsPanel()
     
     scrollFrame:SetScrollChild(scrollChild)
     
-    -- Create scroll bar
+    -- Create scroll bar - positioned to avoid logo area (logo is 80px high at top, plus margin)
     local scrollBar = CreateFrame("Slider", name .. "ScrollBar", scrollFrame, "UIPanelScrollBarTemplate")
-    scrollBar:SetPoint("TOPRIGHT", scrollFrame, "TOPRIGHT", 0, -16)
+    scrollBar:SetPoint("TOPRIGHT", scrollFrame, "TOPRIGHT", 0, -90)  -- Start below logo area (80px logo + 10px margin)
     scrollBar:SetPoint("BOTTOMRIGHT", scrollFrame, "BOTTOMRIGHT", 0, 16)
     scrollBar:SetMinMaxValues(0, 0)
     scrollBar:SetValue(0)

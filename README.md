@@ -95,6 +95,7 @@ See LICENSE file for details.
 ## Credits
 
 - Inspired by IceHUD and ArcHUD
+- Uses resources from IceHUD
 - Uses custom textures for the bar graphics
 
 ## Support
