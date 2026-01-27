@@ -17,6 +17,8 @@ end
 
 function OrbResourceTab:Create()
   local comboCfg = Helpers.ensureComboTable()
+  local tab = self
+  comboCfg.modelPreset = comboCfg.modelPreset or "default"
   local e = self.elements
   
   local yOffset = -20
@@ -35,8 +37,8 @@ function OrbResourceTab:Create()
   end)
   e.enabledCheckbox:SetPoint("TOPLEFT", e.enableSection, "TOPLEFT", 12, -12)
   
-  -- Test Mode checkbox
-  e.testModeCheckbox = Helpers.CreateCheckbox(e.enableSection, "WiseHudOrbsTestModeCheckbox", "Test Mode (Show Max CP)", comboCfg.testMode == true, function(self, checked)
+  -- Test Mode checkbox (not persisted - always starts as false)
+  e.testModeCheckbox = Helpers.CreateCheckbox(e.enableSection, "WiseHudOrbsTestModeCheckbox", "Test Mode (Show Max CP)", false, function(self, checked)
     local cfg = Helpers.ensureComboTable()
     cfg.testMode = checked
     if WiseHudOrbs_OnPowerUpdate then
@@ -47,8 +49,46 @@ function OrbResourceTab:Create()
   
   yOffset = yOffset - 100
   
-  -- Model ID Settings Section (moved to top, above Position Section)
-  e.modelSection = Helpers.CreateSectionFrame(self.parent, "WiseHudOrbsModelSection", "Model Settings", 500, 100)
+  -- Orb Position Section (now directly below enable section)
+  e.positionSection = Helpers.CreateSectionFrame(self.parent, "WiseHudOrbsPositionSection", "Orb Position", 500, 200)
+  
+  -- Position title above section
+  if e.positionSection.titleText then
+    e.positionSection.titleText:SetPoint("TOPLEFT", self.parent, "TOPLEFT", 20, yOffset)
+    yOffset = yOffset - 28 -- Space for title
+  end
+  
+  e.positionSection:SetPoint("TOPLEFT", self.parent, "TOPLEFT", 20, yOffset)
+  
+  -- Combo Points X Position
+  e.xSlider = Helpers.CreateSlider(e.positionSection, "WiseHudOrbsXSlider", "X Position", -400, 400, 5, comboCfg.x or ORB_DEFAULTS.x, nil, function(self, value)
+    local cfg = Helpers.ensureComboTable()
+    cfg.x = value
+    if WiseHudOrbs_ApplyLayout then WiseHudOrbs_ApplyLayout() end
+  end)
+  e.xSlider:SetPoint("TOPLEFT", e.positionSection, "TOPLEFT", 12, -12)
+  
+  -- Combo Points Y Position
+  e.ySlider = Helpers.CreateSlider(e.positionSection, "WiseHudOrbsYSlider", "Y Position", -200, 80, 5, comboCfg.y or ORB_DEFAULTS.y, nil, function(self, value)
+    local cfg = Helpers.ensureComboTable()
+    cfg.y = value
+    if WiseHudOrbs_ApplyLayout then WiseHudOrbs_ApplyLayout() end
+  end)
+  e.ySlider:SetPoint("TOPLEFT", e.xSlider, "BOTTOMLEFT", 0, -20)
+  
+  -- Combo Points Radius
+  e.radiusSlider = Helpers.CreateSlider(e.positionSection, "WiseHudOrbsRadiusSlider", "Radius", 20, 80, 5, comboCfg.radius or ORB_DEFAULTS.radius, nil, function(self, value)
+    local cfg = Helpers.ensureComboTable()
+    cfg.radius = value
+    if WiseHudOrbs_ApplyLayout then WiseHudOrbs_ApplyLayout() end
+  end)
+  e.radiusSlider:SetPoint("TOPLEFT", e.ySlider, "BOTTOMLEFT", 0, -20)
+  
+  -- Calculate yOffset for next section: position section height (200) + title space (28) + padding
+  yOffset = yOffset - 200 - 20 -- Section height + extra padding
+  
+  -- Model Settings Section (with presets + optional custom settings) – now below position settings
+  e.modelSection = Helpers.CreateSectionFrame(self.parent, "WiseHudOrbsModelSection", "Model Settings", 500, 140)
   
   -- Position title above section
   if e.modelSection.titleText then
@@ -65,13 +105,126 @@ function OrbResourceTab:Create()
     return ORB_DEFAULTS.modelId
   end
   
+  -- Preset dropdown label
   local modelLabel = e.modelSection:CreateFontString(nil, "ARTWORK", "GameFontNormal")
   modelLabel:SetPoint("TOPLEFT", e.modelSection, "TOPLEFT", 12, -12)
-  modelLabel:SetText("Model ID:")
+  modelLabel:SetText("Model Preset:")
   modelLabel:SetTextColor(1, 1, 1)
-  
+
+  -- Helper to get presets from central config
+  local orbPresets = {}
+  if WiseHudConfig and WiseHudConfig.GetOrbPresets then
+    local cfgPresets = WiseHudConfig.GetOrbPresets() or {}
+    for i, p in ipairs(cfgPresets) do
+      orbPresets[i] = p
+    end
+  end
+
+  local PRESET_CUSTOM_KEY = "custom"
+
+  local function GetCurrentPresetKey()
+    local cfg = Helpers.ensureComboTable()
+    if cfg.modelPreset and cfg.modelPreset ~= "" then
+      return cfg.modelPreset
+    end
+    return "default"
+  end
+
+  -- Preset dropdown
+  local presetDropdown = CreateFrame("Frame", "WiseHudOrbsPresetDropdown", e.modelSection, "UIDropDownMenuTemplate")
+  presetDropdown:SetPoint("TOPLEFT", modelLabel, "BOTTOMLEFT", -16, -4)
+  presetDropdown:SetWidth(180)
+  e.presetDropdown = presetDropdown
+
+  -- Forward declaration for UI updater
+  local function UpdatePresetUI(selectedKey) end
+
+  -- Utility to update dropdown selection + label
+  self.SetModelPresetSelection = function(_, presetKey)
+    presetKey = presetKey or GetCurrentPresetKey()
+    local displayName = "Custom"
+    if presetKey ~= PRESET_CUSTOM_KEY then
+      for _, preset in ipairs(orbPresets) do
+        if preset.key == presetKey then
+          displayName = preset.name or preset.key
+          break
+        end
+      end
+    end
+
+    if UIDropDownMenu_SetSelectedValue then
+      UIDropDownMenu_SetSelectedValue(presetDropdown, presetKey)
+    end
+    if UIDropDownMenu_SetText then
+      UIDropDownMenu_SetText(presetDropdown, displayName)
+    end
+
+    UpdatePresetUI(presetKey)
+  end
+
+  -- Initialize dropdown entries
+  if UIDropDownMenu_Initialize then
+    UIDropDownMenu_Initialize(presetDropdown, function(dropdown, level)
+      level = level or 1
+      if level ~= 1 then return end
+
+      local currentKey = GetCurrentPresetKey()
+
+      -- Add presets from config
+      for _, preset in ipairs(orbPresets) do
+        local info = UIDropDownMenu_CreateInfo and UIDropDownMenu_CreateInfo() or {}
+        info.text = preset.name or preset.key
+        info.value = preset.key
+        info.checked = (preset.key == currentKey)
+        info.func = function()
+          local cfg = Helpers.ensureComboTable()
+          cfg.modelPreset = preset.key
+          -- When switching away from custom, clear custom overrides so preset cameras apply
+          cfg.modelId = nil
+          cfg.cameraX = nil
+          cfg.cameraY = nil
+          cfg.cameraZ = nil
+
+          if tab.SetModelPresetSelection then
+            tab:SetModelPresetSelection(preset.key)
+          end
+
+          -- Apply new model + layout
+          if WiseHudOrbs_ApplyModelPathToExistingOrbs then
+            WiseHudOrbs_ApplyModelPathToExistingOrbs()
+          end
+          if WiseHudOrbs_OnPowerUpdate then
+            WiseHudOrbs_OnPowerUpdate("player")
+          end
+        end
+        UIDropDownMenu_AddButton(info, level)
+      end
+
+      -- Custom entry
+      local info = UIDropDownMenu_CreateInfo and UIDropDownMenu_CreateInfo() or {}
+      info.text = "Custom"
+      info.value = PRESET_CUSTOM_KEY
+      info.checked = (currentKey == PRESET_CUSTOM_KEY)
+      info.func = function()
+        local cfg = Helpers.ensureComboTable()
+        cfg.modelPreset = PRESET_CUSTOM_KEY
+        if tab.SetModelPresetSelection then
+          tab:SetModelPresetSelection(PRESET_CUSTOM_KEY)
+        end
+      end
+      UIDropDownMenu_AddButton(info, level)
+    end)
+  end
+
+  -- Custom model ID label (only visible for "Custom" preset)
+  local customModelLabel = e.modelSection:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+  customModelLabel:SetPoint("TOPLEFT", e.modelSection, "TOPLEFT", 12, -64)
+  customModelLabel:SetText("Custom FileDataID / Model Path:")
+  customModelLabel:SetTextColor(1, 1, 1)
+  e.customModelLabel = customModelLabel
+
   e.modelIdEditBox = CreateFrame("EditBox", "WiseHudOrbsModelIdEditBox", e.modelSection, "InputBoxTemplate")
-  e.modelIdEditBox:SetPoint("TOPLEFT", modelLabel, "BOTTOMLEFT", 0, -8)
+  e.modelIdEditBox:SetPoint("TOPLEFT", customModelLabel, "BOTTOMLEFT", 0, -8)
   e.modelIdEditBox:SetSize(150, 20)
   e.modelIdEditBox:SetAutoFocus(false)
   
@@ -96,6 +249,12 @@ function OrbResourceTab:Create()
     local text = e.modelIdEditBox:GetText() or ""
     text = strtrim(text)
     local cfg = Helpers.ensureComboTable()
+
+    -- Any manual change to model ID implicitly switches to custom preset
+    cfg.modelPreset = PRESET_CUSTOM_KEY
+    if self.SetModelPresetSelection then
+      self:SetModelPresetSelection(PRESET_CUSTOM_KEY)
+    end
     
     if text == "" then
       cfg.modelId = nil
@@ -129,11 +288,12 @@ function OrbResourceTab:Create()
     UpdateModelFromInput()
   end)
   
-  -- Apply Model Button
+  -- Apply Model Button (only relevant for custom preset)
   local testModelButton = CreateFrame("Button", "WiseHudOrbsTestModelButton", e.modelSection, "UIPanelButtonTemplate")
   testModelButton:SetSize(120, 28)
   testModelButton:SetPoint("LEFT", e.modelIdEditBox, "RIGHT", 12, 0)
   testModelButton:SetText("Apply Model")
+  e.testModelButton = testModelButton
   
   testModelButton:SetScript("OnClick", function(self)
     UpdateModelFromInput()
@@ -201,48 +361,52 @@ function OrbResourceTab:Create()
     end
   end)
   
-  -- Calculate yOffset for next section: model section height (100) + title space (28) + padding
-  yOffset = yOffset - 100 - 20 -- Section height + extra padding
-  
-  -- Combo Points Position Section (moved below Model Settings)
-  e.positionSection = Helpers.CreateSectionFrame(self.parent, "WiseHudOrbsPositionSection", "Combo Points Position", 500, 200)
-  
-  -- Position title above section
-  if e.positionSection.titleText then
-    e.positionSection.titleText:SetPoint("TOPLEFT", self.parent, "TOPLEFT", 20, yOffset)
-    yOffset = yOffset - 28 -- Space for title
+  -- UI updater for preset-dependent elements
+  UpdatePresetUI = function(selectedKey)
+    local isCustom = (selectedKey == PRESET_CUSTOM_KEY)
+
+    if e.customModelLabel then
+      e.customModelLabel:SetShown(isCustom)
+    end
+    if e.modelIdEditBox then
+      e.modelIdEditBox:SetShown(isCustom)
+      if isCustom then
+        e.modelIdEditBox:Enable()
+      else
+        e.modelIdEditBox:Disable()
+      end
+    end
+    if e.testModelButton then
+      e.testModelButton:SetShown(isCustom)
+    end
+    if e.cameraSection then
+      e.cameraSection:SetShown(isCustom)
+      if e.cameraSection.titleText then
+        e.cameraSection.titleText:SetShown(isCustom)
+      end
+    end
+    -- Move reset button closer to the last visible section
+    if e.resetButton then
+      e.resetButton:ClearAllPoints()
+      if isCustom and e.cameraSection then
+        -- Anchor below camera section when custom preset is active
+        e.resetButton:SetPoint("TOPLEFT", e.cameraSection, "BOTTOMLEFT", 0, -20)
+      else
+        -- Anchor directly below model section for non-custom presets
+        e.resetButton:SetPoint("TOPLEFT", e.modelSection, "BOTTOMLEFT", 0, -20)
+      end
+    end
   end
+
+  -- Initialize preset dropdown selection + dependent UI
+  if self.SetModelPresetSelection then
+    self:SetModelPresetSelection(comboCfg.modelPreset or "default")
+  end
+
+  -- Calculate yOffset for next section: model section height (140) + title space (28) + padding
+  yOffset = yOffset - 140 - 20 -- Section height + extra padding
   
-  e.positionSection:SetPoint("TOPLEFT", self.parent, "TOPLEFT", 20, yOffset)
-  
-  -- Combo Points X Position
-  e.xSlider = Helpers.CreateSlider(e.positionSection, "WiseHudOrbsXSlider", "X Position", -400, 400, 5, comboCfg.x or ORB_DEFAULTS.x, nil, function(self, value)
-    local cfg = Helpers.ensureComboTable()
-    cfg.x = value
-    if WiseHudOrbs_ApplyLayout then WiseHudOrbs_ApplyLayout() end
-  end)
-  e.xSlider:SetPoint("TOPLEFT", e.positionSection, "TOPLEFT", 12, -12)
-  
-  -- Combo Points Y Position
-  e.ySlider = Helpers.CreateSlider(e.positionSection, "WiseHudOrbsYSlider", "Y Position", -200, 80, 5, comboCfg.y or ORB_DEFAULTS.y, nil, function(self, value)
-    local cfg = Helpers.ensureComboTable()
-    cfg.y = value
-    if WiseHudOrbs_ApplyLayout then WiseHudOrbs_ApplyLayout() end
-  end)
-  e.ySlider:SetPoint("TOPLEFT", e.xSlider, "BOTTOMLEFT", 0, -20)
-  
-  -- Combo Points Radius
-  e.radiusSlider = Helpers.CreateSlider(e.positionSection, "WiseHudOrbsRadiusSlider", "Radius", 20, 80, 5, comboCfg.radius or ORB_DEFAULTS.radius, nil, function(self, value)
-    local cfg = Helpers.ensureComboTable()
-    cfg.radius = value
-    if WiseHudOrbs_ApplyLayout then WiseHudOrbs_ApplyLayout() end
-  end)
-  e.radiusSlider:SetPoint("TOPLEFT", e.ySlider, "BOTTOMLEFT", 0, -20)
-  
-  -- Calculate yOffset for next section: position section height (200) + title space (28) + padding
-  yOffset = yOffset - 200 - 20 -- Section height + extra padding
-  
-  -- Camera Position Section (moved below Position Section)
+  -- Camera Position Section (below presets)
   e.cameraSection = Helpers.CreateSectionFrame(self.parent, "WiseHudOrbsCameraSection", "Camera Position", 500, 200)
   
   -- Position title above section
@@ -284,7 +448,7 @@ function OrbResourceTab:Create()
   e.cameraZSlider:SetPoint("TOPLEFT", e.cameraYSlider, "BOTTOMLEFT", 0, -20)
   
   self.GetDefaultModelId = GetDefaultModelId
-  
+
   -- Calculate yOffset for reset button: camera section bottom + padding
   yOffset = yOffset - 200 - 40 -- Section height + padding
   
@@ -301,6 +465,11 @@ function OrbResourceTab:Create()
     20,
     yOffset
   )
+
+  -- Ensure camera section visibility & reset button position match current preset
+  if UpdatePresetUI then
+    UpdatePresetUI(comboCfg.modelPreset or "default")
+  end
 end
 
 function OrbResourceTab:Refresh()
@@ -311,6 +480,11 @@ function OrbResourceTab:Refresh()
   -- Reload values from config and update sliders
   local comboCfg = Helpers.ensureComboTable()
   local e = self.elements
+
+  -- Update preset dropdown + dependent UI
+  if self.SetModelPresetSelection then
+    self:SetModelPresetSelection(comboCfg.modelPreset or "default")
+  end
   
   -- Helper function to refresh a slider with a value from config
   local function RefreshSlider(sliderContainer, configValue, defaultValue)
@@ -378,7 +552,8 @@ function OrbResourceTab:Refresh()
     e.enabledCheckbox:SetChecked(comboCfg.enabled ~= false)
   end
   if e.testModeCheckbox then
-    e.testModeCheckbox:SetChecked(comboCfg.testMode == true)
+    -- Test Mode is not persisted - always reset to false on refresh
+    e.testModeCheckbox:SetChecked(false)
   end
 end
 
@@ -393,6 +568,7 @@ function OrbResourceTab:Reset()
   comboCfg.enabled = nil
   comboCfg.testMode = nil
   comboCfg.modelId = nil
+  comboCfg.modelPreset = nil
   
   local e = self.elements
   if e.xSlider and e.xSlider.slider then 
@@ -423,6 +599,9 @@ function OrbResourceTab:Reset()
   if e.testModeCheckbox then e.testModeCheckbox:SetChecked(false) end
   if e.modelIdEditBox and self.GetDefaultModelId then
     e.modelIdEditBox:SetText(tostring(self.GetDefaultModelId()))
+  end
+  if self.SetModelPresetSelection then
+    self:SetModelPresetSelection("default")
   end
   
   if WiseHudOrbs_SetEnabled then WiseHudOrbs_SetEnabled(true) end

@@ -6,6 +6,7 @@ local WiseHud = WiseHudFrame
 
 -- Central defaults
 local ORB_DEFAULTS = WiseHudConfig.GetOrbsDefaults()
+local ORB_PRESETS = WiseHudConfig.GetOrbPresets and WiseHudConfig.GetOrbPresets() or {}
 
 local MAX_POINTS = 7  
 -- local DEFAULT_MODEL_PATH = "spells/7fx_priest_voidorb_state.m2"  -- Void Orb model (like in WeakAuras)
@@ -24,18 +25,49 @@ local DEFAULT_CAMERA_X = ORB_DEFAULTS.cameraX or -1.2
 local DEFAULT_CAMERA_Y = ORB_DEFAULTS.cameraY or 0.0
 local DEFAULT_CAMERA_Z = ORB_DEFAULTS.cameraZ or 0.0
 
+local CUSTOM_PRESET_KEY = "custom"
+
+local function FindOrbPreset(presetKey)
+  if not presetKey or presetKey == "" then
+    return nil
+  end
+  for _, preset in ipairs(ORB_PRESETS) do
+    if preset.key == presetKey then
+      return preset
+    end
+  end
+  return nil
+end
+
 local function GetOrbsSettings()
   WiseHudDB = WiseHudDB or {}
   WiseHudDB.comboSettings = WiseHudDB.comboSettings or {}
   return WiseHudDB.comboSettings
 end
 
--- Get camera position from settings
+-- Get camera position from settings / presets
 local function GetCameraPosition()
   local cfg = GetOrbsSettings()
-  local x = cfg.cameraX or DEFAULT_CAMERA_X
-  local y = cfg.cameraY or DEFAULT_CAMERA_Y
-  local z = cfg.cameraZ or DEFAULT_CAMERA_Z
+  local presetKey = cfg.modelPreset or "default"
+  local x, y, z
+
+  -- For non-custom presets, use camera values from the preset table (if available)
+  if presetKey ~= CUSTOM_PRESET_KEY then
+    local preset = FindOrbPreset(presetKey)
+    if preset then
+      x = preset.cameraX
+      y = preset.cameraY
+      z = preset.cameraZ
+    end
+  end
+
+  -- Fallbacks: for custom preset, or if preset has no camera values
+  if x == nil or y == nil or z == nil then
+    x = cfg.cameraX or DEFAULT_CAMERA_X
+    y = cfg.cameraY or DEFAULT_CAMERA_Y
+    z = cfg.cameraZ or DEFAULT_CAMERA_Z
+  end
+
   return x, y, z
 end
 
@@ -102,6 +134,17 @@ end
 
 local function GetModelPath()
   local cfg = GetOrbsSettings()
+  local presetKey = cfg.modelPreset or "default"
+
+  -- If a non-custom preset is selected, use its modelId from the preset table
+  if presetKey ~= CUSTOM_PRESET_KEY then
+    local preset = FindOrbPreset(presetKey)
+    if preset and preset.modelId then
+      return preset.modelId
+    end
+  end
+
+  -- Custom preset (or no valid preset): fall back to stored modelId or default
   if cfg.modelId then
     -- Try to parse as number first
     local asNumber = tonumber(cfg.modelId)
@@ -112,6 +155,7 @@ local function GetModelPath()
       return cfg.modelId
     end
   end
+
   return DEFAULT_MODEL_PATH
 end
 
@@ -906,6 +950,10 @@ local function EnsureCameraPosition()
 end
 
 function WiseHudOrbs_OnPlayerLogin()
+  -- Reset testMode on login (not persisted)
+  local cfg = GetOrbsSettings()
+  cfg.testMode = nil
+  
   if #orbs > 0 then
     for i, orb in ipairs(orbs) do
       if orb then

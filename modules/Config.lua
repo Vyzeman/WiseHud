@@ -99,6 +99,90 @@ WiseHudConfig.defaults.orbs = {
   modelId = 1372960,
 }
 
+-- Orb model presets (each with model FileDataID and camera defaults)
+WiseHudConfig.defaults.orbPresets = {
+  {
+    key     = "void_orb",
+    name    = "Void Orb",
+    modelId = WiseHudConfig.defaults.orbs.modelId,
+    cameraX = WiseHudConfig.defaults.orbs.cameraX,
+    cameraY = WiseHudConfig.defaults.orbs.cameraY,
+    cameraZ = WiseHudConfig.defaults.orbs.cameraZ,
+  },
+  {
+    key     = "flame_orb",
+    name    = "Flame Orb",
+    modelId = 450902,
+    cameraX = -3,
+    cameraY =  0.0,
+    cameraZ =  -1.7,
+  },
+  {
+    key     = "flame_orb_2",
+    name    = "Flame Orb 2",
+    modelId = 450903,
+    cameraX = -3,
+    cameraY =  0.0,
+    cameraZ =  -1.7,
+  },
+  {
+    key     = "magma_orb",
+    name    = "Magma Orb",
+    modelId = 524767,
+    cameraX = 0,
+    cameraY = 0,
+    cameraZ = 0,
+  },
+  {
+    key     = "chi_orb",
+    name    = "Chi Orb",
+    modelId = 610172,
+    cameraX = 0,
+    cameraY = 0,
+    cameraZ = 0,
+  },
+  {
+    key     = "solar_orb",
+    name    = "Solar Orb",
+    modelId = 959518,
+    cameraX = 0,
+    cameraY = 0,
+    cameraZ = 0,
+  },
+  {
+    key     = "shadow_orb",
+    name    = "Shadow Orb",
+    modelId = 3081600,
+    cameraX = 0,
+    cameraY = 0,
+    cameraZ = 0,
+  },
+  {
+    key     = "frost_orb",
+    name    = "Frost Orb",
+    modelId = 3567592,
+    cameraX = 0,
+    cameraY = 0,
+    cameraZ = 0,
+  },
+  {
+    key     = "maw_orb",
+    name    = "Maw Orb",
+    modelId = 4058682,
+    cameraX = -3,
+    cameraY =  0.0,
+    cameraZ =  -1.7,
+  },
+  {
+    key     = "earth_orb",
+    name    = "Earth Orb",
+    modelId = 4204648,
+    cameraX = -3,
+    cameraY =  0.0,
+    cameraZ =  -1.7,
+  }
+}
+
 function WiseHudConfig.GetCastDefaults()
   return WiseHudConfig.defaults.cast
 end
@@ -109,5 +193,9 @@ end
 
 function WiseHudConfig.GetOrbsDefaults()
   return WiseHudConfig.defaults.orbs
+end
+
+function WiseHudConfig.GetOrbPresets()
+  return WiseHudConfig.defaults.orbPresets
 end
 
