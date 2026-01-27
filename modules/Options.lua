@@ -3,20 +3,6 @@ local ADDON_NAME = ...
 -- Options panel for WiseHud (HUD layout + Combo Points)
 -- Main file that imports and uses the tab classes
 
--- Debug: Check LibStub availability immediately
-do
-  local libStub = LibStub
-  if not libStub then
-    print("WiseHud: LibStub not found in global namespace at Options.lua load time")
-  elseif type(libStub) ~= "table" then
-    print("WiseHud: LibStub exists but is not a table (type: " .. type(libStub) .. ")")
-  elseif type(libStub.GetLibrary) ~= "function" then
-    print("WiseHud: LibStub exists but GetLibrary is not a function")
-  else
-    print("WiseHud: LibStub loaded successfully")
-  end
-end
-
 -- Import tab classes (loaded via TOC)
 local OrbResourceTab = WiseHudOptionsOrbResourceTab
 local HealthPowerTab = WiseHudOptionsHealthPowerTab

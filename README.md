@@ -22,10 +22,17 @@ A customizable Heads-Up Display (HUD) addon for World of Warcraft that displays 
 - Smooth animations for orb appearance and updates
 - Automatic detection of class and specialization
 
+### Cast Bar
+- Customizable cast bar with smooth animations
+- Configurable position, size, and appearance
+- Support for custom statusbar textures via LibSharedMedia-3.0
+- Alpha transitions and visual feedback
+
 ### Options Panel
-- Two-tab interface for organized settings:
+- Three-tab interface for organized settings:
   - **Orb Resource**: Combo point/orb configuration
   - **Health/Power**: Health and power bar settings
+  - **Cast Bar**: Cast bar configuration and appearance
 - Individual enable/disable toggles for each module
 - Sliders for fine-tuning positions, sizes, and layout
 - All settings are saved and persist across sessions
@@ -56,10 +63,18 @@ Access the options panel through:
 - **Offset**: Horizontal offset from center
 - **Y Offset**: Vertical offset from center
 
+### Cast Bar Tab
+- **Enable Cast Bar**: Toggle cast bar display
+- **X Position**: Horizontal position of cast bar
+- **Y Position**: Vertical position of cast bar
+- **Width**: Cast bar width
+- **Height**: Cast bar height
+- **Texture**: Select statusbar texture (requires LibSharedMedia-3.0)
+
 ## Requirements
 
 - World of Warcraft: The War Within (Interface version 120000)
-- No additional dependencies required
+- **LibSharedMedia-3.0** (optional, for custom cast bar textures)
 
 ## Saved Variables
 
@@ -67,7 +82,7 @@ All settings are stored in `WiseHudDB` and persist across sessions.
 
 ## Version
 
-Current Version: **0.1.0**
+Current Version: **1.0.0**
 
 ## Author
 
