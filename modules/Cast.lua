@@ -4,6 +4,9 @@ local ADDON_NAME = ...
 
 local WiseHud = WiseHudFrame
 
+-- Central defaults
+local CAST_DEFAULTS = WiseHudConfig.GetCastDefaults()
+
 -- Use LibSharedMedia-3.0 (if available) so textures from other addons
 -- (e.g. ElvUI) can be selected dynamically.
 local LSM = nil
@@ -47,8 +50,9 @@ local function GetCastTexture()
   WiseHudDB.castLayout = WiseHudDB.castLayout or {}
   local cfg = WiseHudDB.castLayout
 
-  -- Use texture (new unified option), fallback to fillTexture/bgTexture for backward compatibility
-  local name = cfg.texture or cfg.fillTexture or cfg.bgTexture or "Blizzard"
+  -- Use texture (new unified option), fallback to fillTexture/bgTexture for backward compatibility,
+  -- then to the central default texture name.
+  local name = cfg.texture or cfg.fillTexture or cfg.bgTexture or CAST_DEFAULTS.textureName
   return FetchStatusBarTexture(name)
 end
 
@@ -60,16 +64,16 @@ local function GetBackgroundTexture()
   return GetCastTexture()
 end
 
--- Default cast bar color (yellow/gold like IceHUD)
-local DEFAULT_CAST_COLOR_R = 242 / 255
-local DEFAULT_CAST_COLOR_G = 242 / 255
-local DEFAULT_CAST_COLOR_B = 10 / 255
+-- Default cast bar color (from central config)
+local DEFAULT_CAST_COLOR_R = (CAST_DEFAULTS.fill.r or 242) / 255
+local DEFAULT_CAST_COLOR_G = (CAST_DEFAULTS.fill.g or 242) / 255
+local DEFAULT_CAST_COLOR_B = (CAST_DEFAULTS.fill.b or 10) / 255
 
--- Default background color (dark gray)
-local DEFAULT_BG_COLOR_R = 0.3
-local DEFAULT_BG_COLOR_G = 0.3
-local DEFAULT_BG_COLOR_B = 0.3
-local DEFAULT_BG_COLOR_A = 0.8
+-- Default background color (from central config)
+local DEFAULT_BG_COLOR_R = (CAST_DEFAULTS.bg.r or 77) / 255
+local DEFAULT_BG_COLOR_G = (CAST_DEFAULTS.bg.g or 77) / 255
+local DEFAULT_BG_COLOR_B = (CAST_DEFAULTS.bg.b or 77) / 255
+local DEFAULT_BG_COLOR_A = (CAST_DEFAULTS.bg.a or 80) / 100
 
 local function GetCastColor()
   WiseHudDB = WiseHudDB or {}
@@ -92,11 +96,11 @@ local function GetBackgroundColor()
   return r, g, b, a
 end
 
--- Default cast bar dimensions
-local DEFAULT_CAST_WIDTH = 200
-local DEFAULT_CAST_HEIGHT = 20
-local DEFAULT_CAST_OFFSETX = 0
-local DEFAULT_CAST_OFFSETY = -200
+-- Default cast bar dimensions (from central config)
+local DEFAULT_CAST_WIDTH = CAST_DEFAULTS.width or 200
+local DEFAULT_CAST_HEIGHT = CAST_DEFAULTS.height or 20
+local DEFAULT_CAST_OFFSETX = CAST_DEFAULTS.offsetX or 0
+local DEFAULT_CAST_OFFSETY = CAST_DEFAULTS.offsetY or -200
 
 local castBar, castBG, castIcon
 local isCasting = false
@@ -129,7 +133,10 @@ local function IsTextEnabled()
   WiseHudDB = WiseHudDB or {}
   WiseHudDB.castLayout = WiseHudDB.castLayout or {}
   local cfg = WiseHudDB.castLayout
-  return cfg.showText ~= false -- Default to true
+  if cfg.showText == nil then
+    return CAST_DEFAULTS.showText -- Default from central config
+  end
+  return cfg.showText
 end
 
 local function CreateCastBar()

@@ -4,22 +4,25 @@ local ADDON_NAME = ...
 
 local WiseHud = WiseHudFrame
 
+-- Central defaults
+local ORB_DEFAULTS = WiseHudConfig.GetOrbsDefaults()
+
 local MAX_POINTS = 7  
 -- local DEFAULT_MODEL_PATH = "spells/7fx_priest_voidorb_state.m2"  -- Void Orb model (like in WeakAuras)
-local DEFAULT_MODEL_ID = 1372960
+local DEFAULT_MODEL_ID = ORB_DEFAULTS.modelId or 1372960
 local DEFAULT_MODEL_PATH = DEFAULT_MODEL_ID
 local ORB_SIZE = 54
-local DEFAULT_RADIUS = 50
+local DEFAULT_RADIUS = ORB_DEFAULTS.radius or 50
 local TOP_ANGLE = math.rad(90)
 local ARC_LENGTH = math.rad(360)
 
 local orbs = {}
 local orbAnimations = {}
 
--- Default camera position (X, Y, Z)
-local DEFAULT_CAMERA_X = -1.2
-local DEFAULT_CAMERA_Y = 0.0
-local DEFAULT_CAMERA_Z = 0.0
+-- Default camera position (X, Y, Z) from central config
+local DEFAULT_CAMERA_X = ORB_DEFAULTS.cameraX or -1.2
+local DEFAULT_CAMERA_Y = ORB_DEFAULTS.cameraY or 0.0
+local DEFAULT_CAMERA_Z = ORB_DEFAULTS.cameraZ or 0.0
 
 local function GetOrbsSettings()
   WiseHudDB = WiseHudDB or {}
@@ -74,12 +77,12 @@ end
 
 local function GetOrbsX()
   local cfg = GetOrbsSettings()
-  return cfg.x or 0
+  return cfg.x or ORB_DEFAULTS.x or 0
 end
 
 local function GetOrbsY()
   local cfg = GetOrbsSettings()
-  return cfg.y or 0
+  return cfg.y or ORB_DEFAULTS.y or 0
 end
 
 local function GetOrbsRadius()

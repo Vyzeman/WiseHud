@@ -4,6 +4,9 @@ local ADDON_NAME = ...
 
 local WiseHud = WiseHudFrame
 
+-- Central defaults (shared with Power)
+local HP_DEFAULTS = WiseHudConfig.GetHealthPowerDefaults()
+
 -- Forward declarations for health bar frames and alpha state
 local healthBar, healthBG
 local currentAlpha = 0
@@ -13,10 +16,10 @@ local targetAlpha  = 0
 local HEALTH_TEXTURE   = "Interface\\AddOns\\WiseHud\\textures\\CleanCurves-flipped"
 local HEALTH_BG        = "Interface\\AddOns\\WiseHud\\textures\\CleanCurvesBG"
 
--- IceHUD default color for PlayerHealth (37, 164, 30)
-local DEFAULT_HEALTH_COLOR_R = 37 / 255
-local DEFAULT_HEALTH_COLOR_G = 164 / 255
-local DEFAULT_HEALTH_COLOR_B = 30 / 255
+-- Default health bar color (from central defaults, based on IceHUD PlayerHealth)
+local DEFAULT_HEALTH_COLOR_R = (HP_DEFAULTS.colors.health.r or 37) / 255
+local DEFAULT_HEALTH_COLOR_G = (HP_DEFAULTS.colors.health.g or 164) / 255
+local DEFAULT_HEALTH_COLOR_B = (HP_DEFAULTS.colors.health.b or 30) / 255
 
 local function GetHealthColor()
   WiseHudDB = WiseHudDB or {}
@@ -34,15 +37,16 @@ function WiseHudHealth_UpdateColor()
   healthBar:SetStatusBarColor(r, g, b)
 end
 
-local DEFAULT_BAR_WIDTH   = 290
-local DEFAULT_BAR_HEIGHT  = 415
-local DEFAULT_BAR_OFFSETX = 185
-local DEFAULT_BAR_OFFSETY = 90
+-- Layout defaults (from central config)
+local DEFAULT_BAR_WIDTH   = HP_DEFAULTS.layout.width   or 290
+local DEFAULT_BAR_HEIGHT  = HP_DEFAULTS.layout.height  or 415
+local DEFAULT_BAR_OFFSETX = HP_DEFAULTS.layout.offsetX or 185
+local DEFAULT_BAR_OFFSETY = HP_DEFAULTS.layout.offsetY or 90
 
--- Alpha defaults in percent (0–100)
-local DEFAULT_ALPHA_COMBAT    = 70
-local DEFAULT_ALPHA_NONFULL   = 40
-local DEFAULT_ALPHA_FULL_IDLE = 0
+-- Alpha defaults in percent (0–100), from central config
+local DEFAULT_ALPHA_COMBAT    = HP_DEFAULTS.alpha.combat   or 70
+local DEFAULT_ALPHA_NONFULL   = HP_DEFAULTS.alpha.nonFull  or 40
+local DEFAULT_ALPHA_FULL_IDLE = HP_DEFAULTS.alpha.fullIdle or 0
 
 local function GetBarLayout()
   local cfg = (WiseHudDB and WiseHudDB.barLayout) or {}

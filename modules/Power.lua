@@ -4,31 +4,25 @@ local ADDON_NAME = ...
 
 local WiseHud = WiseHudFrame
 
+-- Central defaults (shared with Health)
+local HP_DEFAULTS = WiseHudConfig.GetHealthPowerDefaults()
+
 local POWER_TEXTURE    = "Interface\\AddOns\\WiseHud\\textures\\CleanCurves"
 local POWER_BG         = "Interface\\AddOns\\WiseHud\\textures\\CleanCurvesBG"
 
-local DEFAULT_BAR_WIDTH   = 290
-local DEFAULT_BAR_HEIGHT  = 415
-local DEFAULT_BAR_OFFSETX = 185
-local DEFAULT_BAR_OFFSETY = 90
+-- Layout defaults (from central config)
+local DEFAULT_BAR_WIDTH   = HP_DEFAULTS.layout.width
+local DEFAULT_BAR_HEIGHT  = HP_DEFAULTS.layout.height
+local DEFAULT_BAR_OFFSETX = HP_DEFAULTS.layout.offsetX
+local DEFAULT_BAR_OFFSETY = HP_DEFAULTS.layout.offsetY
 
--- Alpha defaults in percent (0–100)
-local DEFAULT_ALPHA_COMBAT    = 70
-local DEFAULT_ALPHA_NONFULL   = 40
-local DEFAULT_ALPHA_FULL_IDLE = 0
+-- Alpha defaults in percent (0–100), from central config
+local DEFAULT_ALPHA_COMBAT    = HP_DEFAULTS.alpha.combat
+local DEFAULT_ALPHA_NONFULL   = HP_DEFAULTS.alpha.nonFull
+local DEFAULT_ALPHA_FULL_IDLE = HP_DEFAULTS.alpha.fullIdle
 
--- Colors based on IceHUD PlayerMana defaults
-local ICEHUD_POWER_COLORS = {
-  MANA        = {  62 / 255,  54 / 255, 152 / 255 },
-  RAGE        = { 171 / 255,  59 / 255,  59 / 255 },
-  ENERGY      = { 218 / 255, 231 / 255,  31 / 255 },
-  FOCUS       = { 242 / 255, 149 / 255,  98 / 255 },
-  RUNIC_POWER = {  62 / 255,  54 / 255, 152 / 255 },
-  INSANITY    = { 150 / 255,  50 / 255, 255 / 255 },
-  FURY        = { 201 / 255,  66 / 255, 253 / 255 },
-  MAELSTROM   = {  62 / 255,  54 / 255, 152 / 255 },
-  PAIN        = { 255 / 255, 156 / 255,   0 / 255 },
-}
+-- Default per-power-type colors from central config (normalized 0-1)
+local POWER_TYPE_COLORS = HP_DEFAULTS.powerTypeColors
 
 local powerBar, powerBG
 local currentAlpha = 0
@@ -186,12 +180,12 @@ local function UpdatePower()
       -- Use custom color
       powerBar:SetStatusBarColor(cfg.powerR / 255, cfg.powerG / 255, cfg.powerB / 255)
     else
-      -- Color like in IceHUD
+      -- Color like in IceHUD, from central config
       local clr
-      if powerToken and ICEHUD_POWER_COLORS[powerToken] then
-        clr = ICEHUD_POWER_COLORS[powerToken]
-      elseif ICEHUD_POWER_COLORS[powerType] then
-        clr = ICEHUD_POWER_COLORS[powerType]
+      if powerToken and POWER_TYPE_COLORS[powerToken] then
+        clr = POWER_TYPE_COLORS[powerToken]
+      elseif POWER_TYPE_COLORS[powerType] then
+        clr = POWER_TYPE_COLORS[powerType]
       end
 
       if clr then

@@ -5,6 +5,8 @@ local ADDON_NAME = ...
 local OptionsTab = WiseHudOptionsBaseTab
 local Helpers = WiseHudOptionsHelpers
 
+local CAST_DEFAULTS = WiseHudConfig.GetCastDefaults()
+
 -- Helper function to get statusbar names from LibSharedMedia
 local function GetStatusbarNames()
   local names = {}
@@ -123,7 +125,7 @@ function CastBarTab:Create()
   e.textureDropdown = CreateFrame("Frame", "WiseHudCastTextureDropdown", e.textureSection, "UIDropDownMenuTemplate")
   e.textureDropdown:SetPoint("TOPLEFT", textureLabel, "BOTTOMLEFT", -16, -8)
   
-  local currentTexture = castCfg.texture or castCfg.fillTexture or castCfg.bgTexture or "Blizzard"
+  local currentTexture = castCfg.texture or castCfg.fillTexture or castCfg.bgTexture or CAST_DEFAULTS.textureName
   UIDropDownMenu_SetWidth(e.textureDropdown, 220)
   UIDropDownMenu_SetText(e.textureDropdown, currentTexture)
   
@@ -132,7 +134,7 @@ function CastBarTab:Create()
     WiseHudDB = WiseHudDB or {}
     WiseHudDB.castLayout = WiseHudDB.castLayout or {}
     local cfg = WiseHudDB.castLayout
-    local selected = cfg.texture or cfg.fillTexture or cfg.bgTexture or "Blizzard"
+    local selected = cfg.texture or cfg.fillTexture or cfg.bgTexture or CAST_DEFAULTS.textureName
     
     local found = false
     for _, name in ipairs(statusbarNames) do
@@ -144,7 +146,7 @@ function CastBarTab:Create()
     if found then
       UIDropDownMenu_SetText(e.textureDropdown, selected)
     else
-      UIDropDownMenu_SetText(e.textureDropdown, statusbarNames[1] or "Blizzard")
+      UIDropDownMenu_SetText(e.textureDropdown, statusbarNames[1] or CAST_DEFAULTS.textureName)
     end
   end
   
@@ -153,7 +155,7 @@ function CastBarTab:Create()
     WiseHudDB = WiseHudDB or {}
     WiseHudDB.castLayout = WiseHudDB.castLayout or {}
     local cfg = WiseHudDB.castLayout
-    local selected = cfg.texture or cfg.fillTexture or cfg.bgTexture or "Blizzard"
+    local selected = cfg.texture or cfg.fillTexture or cfg.bgTexture or CAST_DEFAULTS.textureName
     
     if #statusbarNames == 0 then
       local lsm = nil
@@ -251,7 +253,7 @@ function CastBarTab:Create()
   e.positionSection:SetPoint("TOPLEFT", self.parent, "TOPLEFT", 20, yOffset)
   
   -- Cast Bar Width
-  e.widthSlider = Helpers.CreateSlider(e.positionSection, "WiseHudCastWidthSlider", "Cast Width", 100, 400, 5, castLayout.width or 200, nil, function(self, value)
+  e.widthSlider = Helpers.CreateSlider(e.positionSection, "WiseHudCastWidthSlider", "Cast Width", 100, 400, 5, castLayout.width or CAST_DEFAULTS.width, nil, function(self, value)
     WiseHudDB = WiseHudDB or {}
     WiseHudDB.castLayout = WiseHudDB.castLayout or {}
     local cfg = WiseHudDB.castLayout
@@ -261,7 +263,7 @@ function CastBarTab:Create()
   e.widthSlider:SetPoint("TOPLEFT", e.positionSection, "TOPLEFT", 12, -12)
   
   -- Cast Bar Height
-  e.heightSlider = Helpers.CreateSlider(e.positionSection, "WiseHudCastHeightSlider", "Cast Height", 10, 50, 1, castLayout.height or 20, nil, function(self, value)
+  e.heightSlider = Helpers.CreateSlider(e.positionSection, "WiseHudCastHeightSlider", "Cast Height", 10, 50, 1, castLayout.height or CAST_DEFAULTS.height, nil, function(self, value)
     WiseHudDB = WiseHudDB or {}
     WiseHudDB.castLayout = WiseHudDB.castLayout or {}
     local cfg = WiseHudDB.castLayout
@@ -271,7 +273,7 @@ function CastBarTab:Create()
   e.heightSlider:SetPoint("TOPLEFT", e.widthSlider, "BOTTOMLEFT", 0, -20)
   
   -- Cast Bar X Offset
-  e.xSlider = Helpers.CreateSlider(e.positionSection, "WiseHudCastXSlider", "Cast X", -400, 400, 5, castLayout.offsetX or 0, nil, function(self, value)
+  e.xSlider = Helpers.CreateSlider(e.positionSection, "WiseHudCastXSlider", "Cast X", -400, 400, 5, castLayout.offsetX or CAST_DEFAULTS.offsetX, nil, function(self, value)
     WiseHudDB = WiseHudDB or {}
     WiseHudDB.castLayout = WiseHudDB.castLayout or {}
     local cfg = WiseHudDB.castLayout
@@ -281,7 +283,7 @@ function CastBarTab:Create()
   e.xSlider:SetPoint("TOPLEFT", e.heightSlider, "BOTTOMLEFT", 0, -20)
   
   -- Cast Bar Y Offset
-  e.ySlider = Helpers.CreateSlider(e.positionSection, "WiseHudCastYSlider", "Cast Y", -400, 400, 5, castLayout.offsetY or -200, nil, function(self, value)
+  e.ySlider = Helpers.CreateSlider(e.positionSection, "WiseHudCastYSlider", "Cast Y", -400, 400, 5, castLayout.offsetY or CAST_DEFAULTS.offsetY, nil, function(self, value)
     WiseHudDB = WiseHudDB or {}
     WiseHudDB.castLayout = WiseHudDB.castLayout or {}
     local cfg = WiseHudDB.castLayout
@@ -291,7 +293,11 @@ function CastBarTab:Create()
   e.ySlider:SetPoint("TOPLEFT", e.xSlider, "BOTTOMLEFT", 0, -20)
   
   -- Show Text Checkbox (inside position section)
-  e.showTextCheck = Helpers.CreateCheckbox(e.positionSection, "WiseHudCastShowTextCheck", "Show Spell Name", castLayout.showText ~= false, function(self, checked)
+  local initialShowText = castLayout.showText
+  if initialShowText == nil then
+    initialShowText = CAST_DEFAULTS.showText
+  end
+  e.showTextCheck = Helpers.CreateCheckbox(e.positionSection, "WiseHudCastShowTextCheck", "Show Spell Name", initialShowText, function(self, checked)
     WiseHudDB = WiseHudDB or {}
     WiseHudDB.castLayout = WiseHudDB.castLayout or {}
     local cfg = WiseHudDB.castLayout
@@ -325,9 +331,10 @@ function CastBarTab:Create()
     WiseHudDB = WiseHudDB or {}
     WiseHudDB.castLayout = WiseHudDB.castLayout or {}
     local cfg = WiseHudDB.castLayout
-    local r = (cfg.fillR or 242) / 255
-    local g = (cfg.fillG or 242) / 255
-    local b = (cfg.fillB or 10) / 255
+    local defaults = CAST_DEFAULTS.fill
+    local r = (cfg.fillR or defaults.r) / 255
+    local g = (cfg.fillG or defaults.g) / 255
+    local b = (cfg.fillB or defaults.b) / 255
     e.fillColorButton.texture:SetVertexColor(r, g, b)
     e.fillColorButton.texture:Show()
   end
@@ -340,7 +347,8 @@ function CastBarTab:Create()
       WiseHudDB = WiseHudDB or {}
       WiseHudDB.castLayout = WiseHudDB.castLayout or {}
       local cfg = WiseHudDB.castLayout
-      return (cfg.fillR or 242) / 255, (cfg.fillG or 242) / 255, (cfg.fillB or 10) / 255, 1
+      local defaults = CAST_DEFAULTS.fill
+      return (cfg.fillR or defaults.r) / 255, (cfg.fillG or defaults.g) / 255, (cfg.fillB or defaults.b) / 255, 1
     end,
     function(r, g, b, a)
       WiseHudDB = WiseHudDB or {}
@@ -368,9 +376,10 @@ function CastBarTab:Create()
     WiseHudDB = WiseHudDB or {}
     WiseHudDB.castLayout = WiseHudDB.castLayout or {}
     local cfg = WiseHudDB.castLayout
-    local r = (cfg.bgR or 77) / 255
-    local g = (cfg.bgG or 77) / 255
-    local b = (cfg.bgB or 77) / 255
+    local defaults = CAST_DEFAULTS.bg
+    local r = (cfg.bgR or defaults.r) / 255
+    local g = (cfg.bgG or defaults.g) / 255
+    local b = (cfg.bgB or defaults.b) / 255
     e.bgColorButton.texture:SetVertexColor(r, g, b)
     e.bgColorButton.texture:Show()
   end
@@ -383,7 +392,8 @@ function CastBarTab:Create()
       WiseHudDB = WiseHudDB or {}
       WiseHudDB.castLayout = WiseHudDB.castLayout or {}
       local cfg = WiseHudDB.castLayout
-      return (cfg.bgR or 77) / 255, (cfg.bgG or 77) / 255, (cfg.bgB or 77) / 255, (cfg.bgA or 80) / 100
+      local defaults = CAST_DEFAULTS.bg
+      return (cfg.bgR or defaults.r) / 255, (cfg.bgG or defaults.g) / 255, (cfg.bgB or defaults.b) / 255, (cfg.bgA or defaults.a) / 100
     end,
     function(r, g, b, a)
       WiseHudDB = WiseHudDB or {}
@@ -489,17 +499,21 @@ function CastBarTab:Refresh()
   end
   
   -- Refresh all sliders with their config values
-  RefreshSlider(e.widthSlider, castCfg.width, 200)
-  RefreshSlider(e.heightSlider, castCfg.height, 20)
-  RefreshSlider(e.xSlider, castCfg.offsetX, 0)
-  RefreshSlider(e.ySlider, castCfg.offsetY, -200)
+  RefreshSlider(e.widthSlider, castCfg.width, CAST_DEFAULTS.width)
+  RefreshSlider(e.heightSlider, castCfg.height, CAST_DEFAULTS.height)
+  RefreshSlider(e.xSlider, castCfg.offsetX, CAST_DEFAULTS.offsetX)
+  RefreshSlider(e.ySlider, castCfg.offsetY, CAST_DEFAULTS.offsetY)
   
   -- Update checkboxes
   if e.enabledCheckbox then
     e.enabledCheckbox:SetChecked(castCfg.enabled ~= false)
   end
   if e.showTextCheck then
-    e.showTextCheck:SetChecked(castCfg.showText ~= false)
+    if castCfg.showText == nil then
+      e.showTextCheck:SetChecked(CAST_DEFAULTS.showText)
+    else
+      e.showTextCheck:SetChecked(castCfg.showText)
+    end
   end
 end
 
@@ -507,45 +521,51 @@ function CastBarTab:Reset()
   WiseHudDB = WiseHudDB or {}
   WiseHudDB.castLayout = WiseHudDB.castLayout or {}
   local castCfg = WiseHudDB.castLayout
-  castCfg.width = nil
-  castCfg.height = nil
-  castCfg.offsetX = nil
-  castCfg.offsetY = nil
-  castCfg.enabled = nil
-  castCfg.texture = nil
-  castCfg.fillTexture = nil
-  castCfg.bgTexture = nil
-  castCfg.fillR = nil
-  castCfg.fillG = nil
-  castCfg.fillB = nil
-  castCfg.bgR = nil
-  castCfg.bgG = nil
-  castCfg.bgB = nil
-  castCfg.bgA = nil
-  castCfg.showText = nil
+  -- Reset layout values back to central defaults
+  castCfg.width = CAST_DEFAULTS.width
+  castCfg.height = CAST_DEFAULTS.height
+  castCfg.offsetX = CAST_DEFAULTS.offsetX
+  castCfg.offsetY = CAST_DEFAULTS.offsetY
+  -- Enabled / show text use their default-true semantics
+  castCfg.enabled = true
+  castCfg.showText = CAST_DEFAULTS.showText
+
+  -- Reset texture selection back to the central default
+  castCfg.texture = CAST_DEFAULTS.textureName
+  castCfg.fillTexture = CAST_DEFAULTS.textureName
+  castCfg.bgTexture = CAST_DEFAULTS.textureName
+
+  -- Reset fill and background colors explicitly to their defaults
+  castCfg.fillR = CAST_DEFAULTS.fill.r
+  castCfg.fillG = CAST_DEFAULTS.fill.g
+  castCfg.fillB = CAST_DEFAULTS.fill.b
+  castCfg.bgR = CAST_DEFAULTS.bg.r
+  castCfg.bgG = CAST_DEFAULTS.bg.g
+  castCfg.bgB = CAST_DEFAULTS.bg.b
+  castCfg.bgA = CAST_DEFAULTS.bg.a
   
   local e = self.elements
   if e.widthSlider and e.widthSlider.slider then 
-    e.widthSlider.slider:SetValue(200)
-    if e.widthSlider.UpdateDisplay then e.widthSlider.UpdateDisplay(200) end
+    e.widthSlider.slider:SetValue(CAST_DEFAULTS.width)
+    if e.widthSlider.UpdateDisplay then e.widthSlider.UpdateDisplay(CAST_DEFAULTS.width) end
   end
   if e.heightSlider and e.heightSlider.slider then 
-    e.heightSlider.slider:SetValue(20)
-    if e.heightSlider.UpdateDisplay then e.heightSlider.UpdateDisplay(20) end
+    e.heightSlider.slider:SetValue(CAST_DEFAULTS.height)
+    if e.heightSlider.UpdateDisplay then e.heightSlider.UpdateDisplay(CAST_DEFAULTS.height) end
   end
   if e.xSlider and e.xSlider.slider then 
-    e.xSlider.slider:SetValue(0)
-    if e.xSlider.UpdateDisplay then e.xSlider.UpdateDisplay(0) end
+    e.xSlider.slider:SetValue(CAST_DEFAULTS.offsetX)
+    if e.xSlider.UpdateDisplay then e.xSlider.UpdateDisplay(CAST_DEFAULTS.offsetX) end
   end
   if e.ySlider and e.ySlider.slider then 
-    e.ySlider.slider:SetValue(-200)
-    if e.ySlider.UpdateDisplay then e.ySlider.UpdateDisplay(-200) end
+    e.ySlider.slider:SetValue(CAST_DEFAULTS.offsetY)
+    if e.ySlider.UpdateDisplay then e.ySlider.UpdateDisplay(CAST_DEFAULTS.offsetY) end
   end
   if e.enabledCheckbox then e.enabledCheckbox:SetChecked(true) end
   if e.showTextCheck then e.showTextCheck:SetChecked(true) end
   if e.textureDropdown then
-    UIDropDownMenu_SetText(e.textureDropdown, "Blizzard")
-    UIDropDownMenu_SetSelectedValue(e.textureDropdown, "Blizzard")
+    UIDropDownMenu_SetText(e.textureDropdown, CAST_DEFAULTS.textureName)
+    UIDropDownMenu_SetSelectedValue(e.textureDropdown, CAST_DEFAULTS.textureName)
   end
   
   if self.UpdateFillColorSwatch then self.UpdateFillColorSwatch() end

@@ -5,6 +5,8 @@ local ADDON_NAME = ...
 local OptionsTab = WiseHudOptionsBaseTab
 local Helpers = WiseHudOptionsHelpers
 
+local HP_DEFAULTS = WiseHudConfig.GetHealthPowerDefaults()
+
 local HealthPowerTab = setmetatable({}, {__index = OptionsTab})
 HealthPowerTab.__index = HealthPowerTab
 
@@ -58,7 +60,7 @@ function HealthPowerTab:Create()
   e.layoutSection:SetPoint("TOPLEFT", self.parent, "TOPLEFT", 20, yOffset)
   
   -- Width
-  e.widthSlider = Helpers.CreateSlider(e.layoutSection, "WiseHudBarWidthSlider", "Width", 120, 400, 5, layout.width or 260, nil, function(self, value)
+  e.widthSlider = Helpers.CreateSlider(e.layoutSection, "WiseHudBarWidthSlider", "Width", 120, 400, 5, layout.width or HP_DEFAULTS.layout.width, nil, function(self, value)
     local cfg = Helpers.ensureLayoutTable()
     cfg.width = value
     if WiseHudHealth_ApplyLayout then WiseHudHealth_ApplyLayout() end
@@ -67,7 +69,7 @@ function HealthPowerTab:Create()
   e.widthSlider:SetPoint("TOPLEFT", e.layoutSection, "TOPLEFT", 12, -12)
   
   -- Height
-  e.heightSlider = Helpers.CreateSlider(e.layoutSection, "WiseHudBarHeightSlider", "Height", 330, 500, 5, layout.height or 415, nil, function(self, value)
+  e.heightSlider = Helpers.CreateSlider(e.layoutSection, "WiseHudBarHeightSlider", "Height", 330, 500, 5, layout.height or HP_DEFAULTS.layout.height, nil, function(self, value)
     local cfg = Helpers.ensureLayoutTable()
     cfg.height = value
     if WiseHudHealth_ApplyLayout then WiseHudHealth_ApplyLayout() end
@@ -75,8 +77,8 @@ function HealthPowerTab:Create()
   end)
   e.heightSlider:SetPoint("TOPLEFT", e.widthSlider, "BOTTOMLEFT", 0, -20)
   
-  -- Distance X (expanded range so default 200 is not at the edge)
-  e.offsetSlider = Helpers.CreateSlider(e.layoutSection, "WiseHudBarOffsetSlider", "Distance X", 150, 250, 5, layout.offset or 200, nil, function(self, value)
+  -- Distance X (expanded range so default is not at the edge)
+  e.offsetSlider = Helpers.CreateSlider(e.layoutSection, "WiseHudBarOffsetSlider", "Distance X", 150, 250, 5, layout.offset or HP_DEFAULTS.layout.offsetX, nil, function(self, value)
     local cfg = Helpers.ensureLayoutTable()
     cfg.offset = value
     if WiseHudHealth_ApplyLayout then WiseHudHealth_ApplyLayout() end
@@ -85,7 +87,7 @@ function HealthPowerTab:Create()
   e.offsetSlider:SetPoint("TOPLEFT", e.heightSlider, "BOTTOMLEFT", 0, -20)
   
   -- Distance Y
-  e.offsetYSlider = Helpers.CreateSlider(e.layoutSection, "WiseHudBarOffsetYSlider", "Distance Y", -20, 200, 5, layout.offsetY or 100, nil, function(self, value)
+  e.offsetYSlider = Helpers.CreateSlider(e.layoutSection, "WiseHudBarOffsetYSlider", "Distance Y", -20, 200, 5, layout.offsetY or HP_DEFAULTS.layout.offsetY, nil, function(self, value)
     local cfg = Helpers.ensureLayoutTable()
     cfg.offsetY = value
     if WiseHudHealth_ApplyLayout then WiseHudHealth_ApplyLayout() end
@@ -109,7 +111,7 @@ function HealthPowerTab:Create()
   e.alphaSection:SetPoint("TOPLEFT", self.parent, "TOPLEFT", 20, yOffset)
   
   -- Combat Alpha
-  e.combatAlphaSlider = Helpers.CreateSlider(e.alphaSection, "WiseHudCombatAlphaSlider", "Combat Alpha", 0, 100, 5, alphaCfg.combatAlpha or 40, "%d%%", function(self, value)
+  e.combatAlphaSlider = Helpers.CreateSlider(e.alphaSection, "WiseHudCombatAlphaSlider", "Combat Alpha", 0, 100, 5, alphaCfg.combatAlpha or HP_DEFAULTS.alpha.combat, "%d%%", function(self, value)
     local cfg = Helpers.ensureAlphaTable()
     cfg.combatAlpha = value
     if WiseHudHealth_ApplyAlpha then WiseHudHealth_ApplyAlpha() end
@@ -118,7 +120,7 @@ function HealthPowerTab:Create()
   e.combatAlphaSlider:SetPoint("TOPLEFT", e.alphaSection, "TOPLEFT", 12, -12)
   
   -- Not full, no combat
-  e.nonFullAlphaSlider = Helpers.CreateSlider(e.alphaSection, "WiseHudNonFullAlphaSlider", "Not Full (ooc)", 0, 100, 5, alphaCfg.nonFullAlpha or 20, "%d%%", function(self, value)
+  e.nonFullAlphaSlider = Helpers.CreateSlider(e.alphaSection, "WiseHudNonFullAlphaSlider", "Not Full (ooc)", 0, 100, 5, alphaCfg.nonFullAlpha or HP_DEFAULTS.alpha.nonFull, "%d%%", function(self, value)
     local cfg = Helpers.ensureAlphaTable()
     cfg.nonFullAlpha = value
     if WiseHudHealth_ApplyAlpha then WiseHudHealth_ApplyAlpha() end
@@ -127,7 +129,7 @@ function HealthPowerTab:Create()
   e.nonFullAlphaSlider:SetPoint("TOPLEFT", e.combatAlphaSlider, "BOTTOMLEFT", 0, -20)
   
   -- Full, no combat
-  e.fullIdleAlphaSlider = Helpers.CreateSlider(e.alphaSection, "WiseHudFullIdleAlphaSlider", "Full (ooc)", 0, 100, 5, alphaCfg.fullIdleAlpha or 0, "%d%%", function(self, value)
+  e.fullIdleAlphaSlider = Helpers.CreateSlider(e.alphaSection, "WiseHudFullIdleAlphaSlider", "Full (ooc)", 0, 100, 5, alphaCfg.fullIdleAlpha or HP_DEFAULTS.alpha.fullIdle, "%d%%", function(self, value)
     local cfg = Helpers.ensureAlphaTable()
     cfg.fullIdleAlpha = value
     if WiseHudHealth_ApplyAlpha then WiseHudHealth_ApplyAlpha() end
@@ -157,9 +159,10 @@ function HealthPowerTab:Create()
   self.UpdateHealthColorSwatch = function()
     if not e.healthColorButton or not e.healthColorButton.texture then return end
     local cfg = Helpers.ensureLayoutTable()
-    local r = (cfg.healthR or 37) / 255
-    local g = (cfg.healthG or 164) / 255
-    local b = (cfg.healthB or 30) / 255
+    local defaults = HP_DEFAULTS.colors.health
+    local r = (cfg.healthR or defaults.r) / 255
+    local g = (cfg.healthG or defaults.g) / 255
+    local b = (cfg.healthB or defaults.b) / 255
     e.healthColorButton.texture:SetVertexColor(r, g, b)
     e.healthColorButton.texture:Show()
   end
@@ -170,7 +173,8 @@ function HealthPowerTab:Create()
     "Health Bar Color",
     function()
       local cfg = Helpers.ensureLayoutTable()
-      return (cfg.healthR or 37) / 255, (cfg.healthG or 164) / 255, (cfg.healthB or 30) / 255, 1
+      local defaults = HP_DEFAULTS.colors.health
+      return (cfg.healthR or defaults.r) / 255, (cfg.healthG or defaults.g) / 255, (cfg.healthB or defaults.b) / 255, 1
     end,
     function(r, g, b, a)
       local cfg = Helpers.ensureLayoutTable()
@@ -194,9 +198,10 @@ function HealthPowerTab:Create()
   self.UpdatePowerColorSwatch = function()
     if not e.powerColorButton or not e.powerColorButton.texture then return end
     local cfg = Helpers.ensureLayoutTable()
-    local r = (cfg.powerR or 62) / 255
-    local g = (cfg.powerG or 54) / 255
-    local b = (cfg.powerB or 152) / 255
+    local defaults = HP_DEFAULTS.colors.power
+    local r = (cfg.powerR or defaults.r) / 255
+    local g = (cfg.powerG or defaults.g) / 255
+    local b = (cfg.powerB or defaults.b) / 255
     e.powerColorButton.texture:SetVertexColor(r, g, b)
     e.powerColorButton.texture:Show()
   end
@@ -207,7 +212,8 @@ function HealthPowerTab:Create()
     "Power Bar Color",
     function()
       local cfg = Helpers.ensureLayoutTable()
-      return (cfg.powerR or 62) / 255, (cfg.powerG or 54) / 255, (cfg.powerB or 152) / 255, 1
+      local defaults = HP_DEFAULTS.colors.power
+      return (cfg.powerR or defaults.r) / 255, (cfg.powerG or defaults.g) / 255, (cfg.powerB or defaults.b) / 255, 1
     end,
     function(r, g, b, a)
       local cfg = Helpers.ensureLayoutTable()
@@ -303,13 +309,13 @@ function HealthPowerTab:Refresh()
   end
   
   -- Refresh all sliders with their config values
-  RefreshSlider(e.widthSlider, healthCfg.width, 260)
-  RefreshSlider(e.heightSlider, healthCfg.height, 415)
-  RefreshSlider(e.offsetSlider, healthCfg.offset, 200)
-  RefreshSlider(e.offsetYSlider, healthCfg.offsetY, 100)
-  RefreshSlider(e.combatAlphaSlider, alphaCfg.combatAlpha, 40)
-  RefreshSlider(e.nonFullAlphaSlider, alphaCfg.nonFullAlpha, 20)
-  RefreshSlider(e.fullIdleAlphaSlider, alphaCfg.fullIdleAlpha, 0)
+  RefreshSlider(e.widthSlider, healthCfg.width, HP_DEFAULTS.layout.width)
+  RefreshSlider(e.heightSlider, healthCfg.height, HP_DEFAULTS.layout.height)
+  RefreshSlider(e.offsetSlider, healthCfg.offset, HP_DEFAULTS.layout.offsetX)
+  RefreshSlider(e.offsetYSlider, healthCfg.offsetY, HP_DEFAULTS.layout.offsetY)
+  RefreshSlider(e.combatAlphaSlider, alphaCfg.combatAlpha, HP_DEFAULTS.alpha.combat)
+  RefreshSlider(e.nonFullAlphaSlider, alphaCfg.nonFullAlpha, HP_DEFAULTS.alpha.nonFull)
+  RefreshSlider(e.fullIdleAlphaSlider, alphaCfg.fullIdleAlpha, HP_DEFAULTS.alpha.fullIdle)
   
   -- Update checkboxes
   if e.healthEnabledCheckbox then
@@ -342,34 +348,34 @@ function HealthPowerTab:Reset()
   
   local e = self.elements
   if e.widthSlider and e.widthSlider.slider then 
-    e.widthSlider.slider:SetValue(260)
-    if e.widthSlider.UpdateDisplay then e.widthSlider.UpdateDisplay(260) end
+    e.widthSlider.slider:SetValue(HP_DEFAULTS.layout.width)
+    if e.widthSlider.UpdateDisplay then e.widthSlider.UpdateDisplay(HP_DEFAULTS.layout.width) end
   end
   if e.heightSlider and e.heightSlider.slider then 
-    e.heightSlider.slider:SetValue(415)
-    if e.heightSlider.UpdateDisplay then e.heightSlider.UpdateDisplay(415) end
+    e.heightSlider.slider:SetValue(HP_DEFAULTS.layout.height)
+    if e.heightSlider.UpdateDisplay then e.heightSlider.UpdateDisplay(HP_DEFAULTS.layout.height) end
   end
   if e.offsetSlider and e.offsetSlider.slider then 
-    e.offsetSlider.slider:SetValue(200)
-    if e.offsetSlider.UpdateDisplay then e.offsetSlider.UpdateDisplay(200) end
+    e.offsetSlider.slider:SetValue(HP_DEFAULTS.layout.offsetX)
+    if e.offsetSlider.UpdateDisplay then e.offsetSlider.UpdateDisplay(HP_DEFAULTS.layout.offsetX) end
   end
   if e.offsetYSlider and e.offsetYSlider.slider then 
-    e.offsetYSlider.slider:SetValue(100)
-    if e.offsetYSlider.UpdateDisplay then e.offsetYSlider.UpdateDisplay(100) end
+    e.offsetYSlider.slider:SetValue(HP_DEFAULTS.layout.offsetY)
+    if e.offsetYSlider.UpdateDisplay then e.offsetYSlider.UpdateDisplay(HP_DEFAULTS.layout.offsetY) end
   end
   if e.healthEnabledCheckbox then e.healthEnabledCheckbox:SetChecked(true) end
   if e.powerEnabledCheckbox then e.powerEnabledCheckbox:SetChecked(true) end
   if e.combatAlphaSlider and e.combatAlphaSlider.slider then 
-    e.combatAlphaSlider.slider:SetValue(40)
-    if e.combatAlphaSlider.UpdateDisplay then e.combatAlphaSlider.UpdateDisplay(40) end
+    e.combatAlphaSlider.slider:SetValue(HP_DEFAULTS.alpha.combat)
+    if e.combatAlphaSlider.UpdateDisplay then e.combatAlphaSlider.UpdateDisplay(HP_DEFAULTS.alpha.combat) end
   end
   if e.nonFullAlphaSlider and e.nonFullAlphaSlider.slider then 
-    e.nonFullAlphaSlider.slider:SetValue(20)
-    if e.nonFullAlphaSlider.UpdateDisplay then e.nonFullAlphaSlider.UpdateDisplay(20) end
+    e.nonFullAlphaSlider.slider:SetValue(HP_DEFAULTS.alpha.nonFull)
+    if e.nonFullAlphaSlider.UpdateDisplay then e.nonFullAlphaSlider.UpdateDisplay(HP_DEFAULTS.alpha.nonFull) end
   end
   if e.fullIdleAlphaSlider and e.fullIdleAlphaSlider.slider then 
-    e.fullIdleAlphaSlider.slider:SetValue(0)
-    if e.fullIdleAlphaSlider.UpdateDisplay then e.fullIdleAlphaSlider.UpdateDisplay(0) end
+    e.fullIdleAlphaSlider.slider:SetValue(HP_DEFAULTS.alpha.fullIdle)
+    if e.fullIdleAlphaSlider.UpdateDisplay then e.fullIdleAlphaSlider.UpdateDisplay(HP_DEFAULTS.alpha.fullIdle) end
   end
   
   if WiseHudHealth_SetEnabled then WiseHudHealth_SetEnabled(true) end

@@ -553,9 +553,21 @@ local function CreateColorPicker(parent, name, label, getColorFunc, setColorFunc
     local function UpdateColor()
       local newR, newG, newB
       if ColorPickerFrame.GetColorRGB then
-        local ok, rgb = pcall(ColorPickerFrame.GetColorRGB, ColorPickerFrame)
+        -- WoW's ColorPickerFrame:GetColorRGB normally returns r, g, b as separate numbers.
+        -- Some UIs may wrap/override it to return a table, so handle both cases safely.
+        local ok, r1, g1, b1 = pcall(ColorPickerFrame.GetColorRGB, ColorPickerFrame)
         if ok then
-          newR, newG, newB = rgb.r, rgb.g, rgb.b
+          if type(r1) == "table" then
+            -- Table-style return: { r = ..., g = ..., b = ... } or { [1] = r, [2] = g, [3] = b }
+            newR = r1.r or r1[1] or r
+            newG = r1.g or r1[2] or g
+            newB = r1.b or r1[3] or b
+          else
+            -- Standard return: r, g, b numbers
+            newR = r1 or r
+            newG = g1 or g
+            newB = b1 or b
+          end
         else
           newR = ColorPickerFrame.r or r
           newG = ColorPickerFrame.g or g
