@@ -90,6 +90,12 @@ WiseHudConfig.defaults.orbs = {
   y      = -50,
   radius = 35,
 
+  -- Visual/layout constants
+  orbSize      = 54,
+  topAngleDeg  = 90,
+  arcLengthDeg = 360,
+  maxPointsFallback = 7,
+
   -- Camera position
   cameraX = -3,
   cameraY =  0.0,

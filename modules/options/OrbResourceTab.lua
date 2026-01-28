@@ -326,28 +326,8 @@ function OrbResourceTab:Create()
     if attempted then
       if success then
         print("|cFF00FF00WiseHud:|r Model ID " .. modelId .. " applied successfully.")
-        -- Update camera position for ALL orbs after successful model apply
-        -- This ensures camera is set even for hidden orbs
-        -- Set camera position multiple times with delays to ensure it sticks
         if WiseHudOrbs_UpdateCameraPosition then
-          -- First update after model has time to start loading
-          C_Timer.After(0.2, function()
-            if WiseHudOrbs_UpdateCameraPosition then
-              WiseHudOrbs_UpdateCameraPosition()
-            end
-          end)
-          -- Second update after model should be loaded
-          C_Timer.After(0.4, function()
-            if WiseHudOrbs_UpdateCameraPosition then
-              WiseHudOrbs_UpdateCameraPosition()
-            end
-          end)
-          -- Third update to ensure it sticks
-          C_Timer.After(0.6, function()
-            if WiseHudOrbs_UpdateCameraPosition then
-              WiseHudOrbs_UpdateCameraPosition()
-            end
-          end)
+          WiseHudOrbs_UpdateCameraPosition()
         end
       else
         print("|cFFFF0000WiseHud:|r Model ID " .. modelId .. " not found. Please check the ID and try again.")
@@ -418,7 +398,9 @@ function OrbResourceTab:Create()
   e.cameraXSlider = Helpers.CreateSlider(e.cameraSection, "WiseHudOrbsCameraXSlider", "Camera X", -3.0, 0.0, 0.1, comboCfg.cameraX or ORB_DEFAULTS.cameraX, "%.1f", function(self, value)
     local cfg = Helpers.ensureComboTable()
     cfg.cameraX = value
-    if WiseHudOrbs_UpdateCameraPosition then
+    if WiseHudOrbs_UpdateCameraOnly then
+      WiseHudOrbs_UpdateCameraOnly()
+    elseif WiseHudOrbs_UpdateCameraPosition then
       WiseHudOrbs_UpdateCameraPosition()
     end
   end)
@@ -428,7 +410,9 @@ function OrbResourceTab:Create()
   e.cameraYSlider = Helpers.CreateSlider(e.cameraSection, "WiseHudOrbsCameraYSlider", "Camera Y", -2.0, 2.0, 0.1, comboCfg.cameraY or ORB_DEFAULTS.cameraY, "%.1f", function(self, value)
     local cfg = Helpers.ensureComboTable()
     cfg.cameraY = value
-    if WiseHudOrbs_UpdateCameraPosition then
+    if WiseHudOrbs_UpdateCameraOnly then
+      WiseHudOrbs_UpdateCameraOnly()
+    elseif WiseHudOrbs_UpdateCameraPosition then
       WiseHudOrbs_UpdateCameraPosition()
     end
   end)
@@ -438,7 +422,9 @@ function OrbResourceTab:Create()
   e.cameraZSlider = Helpers.CreateSlider(e.cameraSection, "WiseHudOrbsCameraZSlider", "Camera Z", -2.0, 2.0, 0.1, comboCfg.cameraZ or ORB_DEFAULTS.cameraZ, "%.1f", function(self, value)
     local cfg = Helpers.ensureComboTable()
     cfg.cameraZ = value
-    if WiseHudOrbs_UpdateCameraPosition then
+    if WiseHudOrbs_UpdateCameraOnly then
+      WiseHudOrbs_UpdateCameraOnly()
+    elseif WiseHudOrbs_UpdateCameraPosition then
       WiseHudOrbs_UpdateCameraPosition()
     end
   end)

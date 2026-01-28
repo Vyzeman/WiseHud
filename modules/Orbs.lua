@@ -2,31 +2,31 @@ local ADDON_NAME = ...
 
 -- Orb module & model options
 
-local WiseHud = WiseHudFrame
-
 -- Central defaults
 local ORB_DEFAULTS = WiseHudConfig.GetOrbsDefaults()
 local ORB_PRESETS = WiseHudConfig.GetOrbPresets and WiseHudConfig.GetOrbPresets() or {}
 
-local MAX_POINTS = 7  
--- local DEFAULT_MODEL_PATH = "spells/7fx_priest_voidorb_state.m2"  -- Void Orb model (like in WeakAuras)
-local DEFAULT_MODEL_ID = ORB_DEFAULTS.modelId or 1372960
-local DEFAULT_MODEL_PATH = DEFAULT_MODEL_ID
-local ORB_SIZE = 54
-local DEFAULT_RADIUS = ORB_DEFAULTS.radius or 50
-local TOP_ANGLE = math.rad(90)
-local ARC_LENGTH = math.rad(360)
+local MAX_POINTS = ORB_DEFAULTS.maxPointsFallback
+
+local DEFAULT_MODEL_ID = ORB_DEFAULTS.modelId
+local ORB_SIZE = ORB_DEFAULTS.orbSize
+local DEFAULT_RADIUS = ORB_DEFAULTS.radius
+local TOP_ANGLE = math.rad(ORB_DEFAULTS.topAngleDeg)
+local ARC_LENGTH = math.rad(ORB_DEFAULTS.arcLengthDeg)
 
 local orbs = {}
 local orbAnimations = {}
 local EnsureCameraPosition -- forward declaration so it can be used earlier
 local UpdateOrbs           -- forward declaration so it can be used earlier
+local GetPowerTypeForClass -- forward declaration so it can be used earlier
 local orbsReinitializedAfterFirstPoints = false -- for relog fix: one-time re-create after first point
+local orbsCameraReady = false
+local cameraStabilizeTicker = nil
 
 -- Default camera position (X, Y, Z) from central config
-local DEFAULT_CAMERA_X = ORB_DEFAULTS.cameraX or -1.2
-local DEFAULT_CAMERA_Y = ORB_DEFAULTS.cameraY or 0.0
-local DEFAULT_CAMERA_Z = ORB_DEFAULTS.cameraZ or 0.0
+local DEFAULT_CAMERA_X = ORB_DEFAULTS.cameraX
+local DEFAULT_CAMERA_Y = ORB_DEFAULTS.cameraY
+local DEFAULT_CAMERA_Z = ORB_DEFAULTS.cameraZ
 
 local CUSTOM_PRESET_KEY = "custom"
 
@@ -48,17 +48,18 @@ local function GetOrbsSettings()
   return WiseHudDB.comboSettings
 end
 
+local function NormalizePresetKey(presetKey)
+  -- Keep preset resolution consistent with the options UI.
+  if not presetKey or presetKey == "" or presetKey == "default" then
+    return "void_orb"
+  end
+  return presetKey
+end
+
 -- Get camera position from settings / presets
 local function GetCameraPosition()
   local cfg = GetOrbsSettings()
-  local presetKey = cfg.modelPreset
-
-  -- Map legacy/empty "default" to the actual default preset key ("void_orb"),
-  -- just like the options UI does. This ensures login / reload use the same
-  -- camera values as when you pick the preset in the config panel.
-  if not presetKey or presetKey == "" or presetKey == "default" then
-    presetKey = "void_orb"
-  end
+  local presetKey = NormalizePresetKey(cfg.modelPreset)
   local x, y, z
 
   -- For non-custom presets, use camera values from the preset table (if available)
@@ -121,12 +122,12 @@ end
 
 local function GetOrbsX()
   local cfg = GetOrbsSettings()
-  return cfg.x or ORB_DEFAULTS.x or 0
+  return cfg.x or ORB_DEFAULTS.x
 end
 
 local function GetOrbsY()
   local cfg = GetOrbsSettings()
-  return cfg.y or ORB_DEFAULTS.y or 0
+  return cfg.y or ORB_DEFAULTS.y
 end
 
 local function GetOrbsRadius()
@@ -146,14 +147,7 @@ end
 
 local function GetModelPath()
   local cfg = GetOrbsSettings()
-  local presetKey = cfg.modelPreset
-
-  -- Keep preset resolution consistent with the options UI:
-  -- treat nil/empty/"default" as "void_orb" so the same model & camera
-  -- are used on login/reload as when selecting the preset in the UI.
-  if not presetKey or presetKey == "" or presetKey == "default" then
-    presetKey = "void_orb"
-  end
+  local presetKey = NormalizePresetKey(cfg.modelPreset)
 
   -- If a non-custom preset is selected, use its modelId from the preset table
   if presetKey ~= CUSTOM_PRESET_KEY then
@@ -175,70 +169,86 @@ local function GetModelPath()
     end
   end
 
-  return DEFAULT_MODEL_PATH
+  return DEFAULT_MODEL_ID
+end
+
+local function NormalizeModelPath(modelPath)
+  if not modelPath or modelPath == "" then
+    return nil
+  end
+
+  if type(modelPath) == "number" then
+    return modelPath
+  end
+
+  if type(modelPath) == "string" then
+    local trimmed = strtrim(modelPath)
+    if trimmed == "" then
+      return nil
+    end
+    local asNumber = tonumber(trimmed)
+    if asNumber then
+      return asNumber
+    end
+    return trimmed
+  end
+
+  return nil
+end
+
+local function ApplyModelToOrb(orb, modelPath)
+  if not orb or not orb.SetModel then
+    return false
+  end
+
+  local normalized = NormalizeModelPath(modelPath)
+  if not normalized then
+    return false
+  end
+
+  if type(normalized) == "number" then
+    local ok = pcall(orb.SetModel, orb, normalized)
+    if ok then
+      return true
+    end
+    -- Try SetDisplayInfo as fallback
+    local ok2 = pcall(orb.SetDisplayInfo, orb, normalized)
+    return ok2 == true
+  end
+
+  -- String path (like .m2 file)
+  return pcall(orb.SetModel, orb, normalized) == true
+end
+
+local function AfterModelApplied(orb)
+  C_Timer.After(0.1, function()
+    if not orb or not orb.SetModelScale then
+      return
+    end
+    ConfigureOrbModel(orb)
+    orb:SetAlpha(1)
+  end)
 end
 
 local function ApplyModelPathToExistingOrbs()
   local modelPath = GetModelPath()
   local success = false
   local attempted = false
-  
+
+  local normalized = NormalizeModelPath(modelPath)
+  if normalized then
+    attempted = true
+  end
+
   for _, orb in ipairs(orbs) do
-    if orb and orb.SetModel then
-      if modelPath and modelPath ~= "" then
-        attempted = true
-        local asNumber = nil
-        if type(modelPath) == "number" then
-          asNumber = modelPath
-        elseif type(modelPath) == "string" then
-          asNumber = tonumber(modelPath)
-        end
-        
-        if asNumber then
-          local ok = pcall(orb.SetModel, orb, asNumber)
-          if ok then
-            success = true
-            -- Once the model is applied, configure model + camera after a short delay
-            C_Timer.After(0.1, function()
-              if not orb or not orb.SetModelScale then
-                return
-              end
-              ConfigureOrbModel(orb)
-              orb:SetAlpha(1)
-            end)
-          else
-            -- Try SetDisplayInfo as fallback
-            local ok2 = pcall(orb.SetDisplayInfo, orb, asNumber)
-            if ok2 then
-              success = true
-              C_Timer.After(0.1, function()
-                if not orb or not orb.SetModelScale then
-                  return
-                end
-                ConfigureOrbModel(orb)
-                orb:SetAlpha(1)
-              end)
-            end
-          end
-        elseif type(modelPath) == "string" then
-          -- String path (like .m2 file)
-          local ok = pcall(orb.SetModel, orb, modelPath)
-          if ok then
-            success = true
-            C_Timer.After(0.1, function()
-              if not orb or not orb.SetModelScale then
-                return
-              end
-              pcall(orb.SetKeepModelOnHide, orb, true)
-              pcall(orb.SetModelScale, orb, 1)
-              orb:SetAlpha(1)
-            end)
-          end
-        end
+    if orb and normalized then
+      if ApplyModelToOrb(orb, normalized) then
+        success = true
+        AfterModelApplied(orb)
       end
     end
   end
-  
+
   return success, attempted
 end
 
@@ -386,7 +396,7 @@ local function TestModelPath(modelPath)
   end
   
   -- Create a temporary test orb (use UIParent as parent, will be cleaned up)
-  local testOrb = CreateFrame("PlayerModel", "WiseHudTestOrb", UIParent)
+  local testOrb = CreateFrame("PlayerModel", nil, UIParent)
   testOrb:SetSize(ORB_SIZE, ORB_SIZE)
   testOrb:SetFrameStrata("TOOLTIP")
   testOrb:SetFrameLevel(1000)
@@ -480,7 +490,7 @@ local POWER_TYPE_PAIN = 18
 local currentPowerType = nil
 local currentMaxPoints = MAX_POINTS
 
-local function GetPowerTypeForClass()
+function GetPowerTypeForClass()
   local _, class = UnitClass("player")
   if not class then return nil end
   
@@ -538,19 +548,13 @@ local function CreateOrbs()
     return
   end
   
-  local maxPoints = GetMaxPoints()
-  
   if #orbs > 0 then
+    local maxPoints = GetMaxPoints()
     if #orbs ~= maxPoints then
       for i, orb in ipairs(orbs) do
         if orb then
           orb:Hide()
-          if orb.testTexture then
-            orb.testTexture:Hide()
-          end
-          if orb.texture then
-            orb.texture:Hide()
-          end
+          if orb.fallbackTexture then orb.fallbackTexture:Hide() end
         end
       end
       orbs = {}
@@ -558,107 +562,44 @@ local function CreateOrbs()
     else
       for i, orb in ipairs(orbs) do
         if orb and orb.GetModelFileID then
-        local ok, fileID = pcall(orb.GetModelFileID, orb)
-        if not ok then
-          fileID = nil
-        end
-        if not fileID or fileID == 0 then
-          local modelPath = GetModelPath()
-          
-          local asNumber = nil
-          if type(modelPath) == "number" then
-            asNumber = modelPath
-          elseif type(modelPath) == "string" then
-            asNumber = tonumber(modelPath)
+          local ok, fileID = pcall(orb.GetModelFileID, orb)
+          if not ok then
+            fileID = nil
           end
-          
-          if asNumber then
-            local ok, err = pcall(orb.SetModel, orb, asNumber)
-            if ok then
-              ConfigureOrbModel(orb)
-            end
-          elseif type(modelPath) == "string" then
-            local ok, err = pcall(orb.SetModel, orb, modelPath)
-            if ok then
+          if not fileID or fileID == 0 then
+            local modelPath = GetModelPath()
+            if ApplyModelToOrb(orb, modelPath) then
               ConfigureOrbModel(orb)
             end
           end
         end
-      end
       end
     end
     return
   end
   
 
-  local WiseHud = WiseHudFrame
   local radius = GetOrbsRadius()
   local maxPoints = GetMaxPoints()
-  WiseHud:SetSize(radius * 2 + ORB_SIZE, radius * 2 + ORB_SIZE)
+  WiseHudFrame:SetSize(radius * 2 + ORB_SIZE, radius * 2 + ORB_SIZE)
 
   for i = 1, maxPoints do
-    local orb = CreateFrame("PlayerModel", "WiseHudOrb"..i, WiseHud)
+    local orb = CreateFrame("PlayerModel", "WiseHudOrb"..i, WiseHudFrame)
     orb:SetSize(ORB_SIZE, ORB_SIZE)
     orb:SetFrameStrata("HIGH")
     orb:SetFrameLevel(20)
     orb:SetKeepModelOnHide(true)
 
     local modelPath = GetModelPath()
-    local modelLoaded = false
-    
-    local asNumber = nil
-    if type(modelPath) == "number" then
-      asNumber = modelPath
-    elseif type(modelPath) == "string" then
-      if modelPath:match("%.m2$") or modelPath:match("%.M2$") then
-        asNumber = nil
-      else
-        asNumber = tonumber(modelPath)
-        if not asNumber then
-          asNumber = nil
-        end
-      end
-    end
-    
-        if asNumber then
-          local ok, err = pcall(orb.SetModel, orb, asNumber)
-          if ok then
-            -- After the model is set, configure model & camera once it has loaded
-            C_Timer.After(0.1, function()
-              if not orb or not orb.SetModelScale then
-                return
-              end
-              ConfigureOrbModel(orb)
-            end)
-            modelLoaded = true
-          else
-        local ok2, err2 = pcall(orb.SetDisplayInfo, orb, asNumber)
-        if ok2 then
-          C_Timer.After(0.1, function()
-            if not orb or not orb.SetModelScale then
-              return
-            end
-            ConfigureOrbModel(orb)
-          end)
-          modelLoaded = true
-        end
-      end
-    end
-    
-    if not modelLoaded then
-      local texture = orb:CreateTexture(nil, "ARTWORK")
-      texture:SetAllPoints(orb)
-      texture:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
-      texture:SetVertexColor(1, 1, 0, 1)
-      orb.texture = texture
+    local modelLoaded = ApplyModelToOrb(orb, modelPath)
+    if modelLoaded then
+      AfterModelApplied(orb)
     else
-      if orb.texture then
-        orb.texture:Hide()
-        orb.texture = nil
-      end
-      if orb.testTexture then
-        orb.testTexture:Hide()
-      end
+      local fallbackTexture = orb:CreateTexture(nil, "ARTWORK")
+      fallbackTexture:SetAllPoints(orb)
+      fallbackTexture:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
+      fallbackTexture:SetVertexColor(1, 1, 0, 1)
+      orb.fallbackTexture = fallbackTexture
     end
 
     -- Start fully visible; no mini-scale for debugging/fine-tuning
@@ -667,42 +608,14 @@ local function CreateOrbs()
     orb:ClearAllPoints()
     orb:SetPoint("CENTER", WiseHudFrame, "CENTER", 0, 0)
     
-    if not modelLoaded then
-      local testTexture = orb:CreateTexture(nil, "BACKGROUND")
-      testTexture:SetAllPoints(orb)
-      testTexture:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
-      testTexture:SetVertexColor(1, 0, 0, 0.5)
-      orb.testTexture = testTexture
-    else
-      C_Timer.After(0.5, function()
-        if orb and orb.GetModelFileID then
-          local ok, fileID = pcall(orb.GetModelFileID, orb)
-          if ok and (not fileID or fileID == 0) then
-            if orb and not orb.testTexture then
-              local ok2, testTexture = pcall(orb.CreateTexture, orb, nil, "BACKGROUND")
-              if ok2 and testTexture then
-                testTexture:SetAllPoints(orb)
-                testTexture:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
-                testTexture:SetVertexColor(1, 0, 0, 0.5)
-                orb.testTexture = testTexture
-              end
-            end
-          end
-        end
-      end)
-    end
-    
     orb:Hide()
     
     orbs[i] = orb
     orbAnimations[i] = { 
-      currentScale = 0.01, 
-      targetScale = 0.01, 
-      currentX = 0,
-      currentY = 0,
+      currentX = nil,
+      currentY = nil,
       targetX = 0,
       targetY = 0,
-      animating = false 
     }
   end
 end
@@ -767,62 +680,35 @@ local function IsComboPointType(powerType)
   return false
 end
 
-local function AnimateOrbScale(orbIndex, targetScale)
-  -- Simplified variant for debugging camera behavior:
-  -- no scale animation, active orbs always with scale 1.0,
-  -- inactive orbs are simply hidden.
+local function SetOrbActive(orbIndex, isActive)
   local orb = orbs[orbIndex]
   if not orb then return end
 
-  if targetScale > 0 then
+  if isActive then
     orb:Show()
     orb:SetScale(1)
-    if orb.testTexture then
-      orb.testTexture:Show()
-    end
   else
-    if orb.testTexture then
-      orb.testTexture:Hide()
-    end
     orb:Hide()
   end
 end
 
 function WiseHudOrbs_UpdateAnimations(elapsed)
-  local animationSpeed = 8
   local positionSpeed = 6
-  local minScale = 0.01
   local maxPoints = GetMaxPoints()
   
   for i = 1, maxPoints do
     local anim = orbAnimations[i]
     if anim and orbs[i] then
       local orb = orbs[i]
-      local needsUpdate = false
-      
-      if anim.animating then
-        local scaleDiff = anim.targetScale - anim.currentScale
-        
-        if math.abs(scaleDiff) < 0.01 then
-          anim.currentScale = anim.targetScale
-          anim.animating = false
-          orb:SetScale(anim.currentScale)
-          
-          if anim.currentScale <= minScale then
-            orb:Hide()
-          end
-        else
-          anim.currentScale = anim.currentScale + scaleDiff * math.min(1, animationSpeed * elapsed)
-          if anim.currentScale < minScale then
-            anim.currentScale = minScale
-          end
-          orb:SetScale(anim.currentScale)
-          needsUpdate = true
-        end
+      if anim.currentX == nil or anim.currentY == nil then
+        anim.currentX = anim.targetX
+        anim.currentY = anim.targetY
+        orb:ClearAllPoints()
+        orb:SetPoint("CENTER", WiseHudFrame, "CENTER", anim.currentX, anim.currentY)
       end
-      
-      local posDiffX = anim.targetX - anim.currentX
-      local posDiffY = anim.targetY - anim.currentY
+
+      local posDiffX = anim.targetX - (anim.currentX or 0)
+      local posDiffY = anim.targetY - (anim.currentY or 0)
       local posDistance = math.sqrt(posDiffX * posDiffX + posDiffY * posDiffY)
       
       if posDistance > 0.5 then
@@ -832,7 +718,6 @@ function WiseHudOrbs_UpdateAnimations(elapsed)
         
         orb:ClearAllPoints()
         orb:SetPoint("CENTER", WiseHudFrame, "CENTER", anim.currentX, anim.currentY)
-        needsUpdate = true
       else
         anim.currentX = anim.targetX
         anim.currentY = anim.targetY
@@ -903,19 +788,12 @@ function UpdateOrbs()
         if anim then
           anim.targetX = x
           anim.targetY = y
-          if anim.currentX == 0 and anim.currentY == 0 then
-            anim.currentX = x
-            anim.currentY = y
-            orb:ClearAllPoints()
-            orb:SetPoint("CENTER", WiseHudFrame, "CENTER", x, y)
-          end
+          -- First-time init is handled in WiseHudOrbs_UpdateAnimations via nil sentinel.
         end
         
-        AnimateOrbScale(i, 1.0)
+        SetOrbActive(i, true)
       else
-        -- Use 0.0 as target scale so the simplified
-        -- AnimateOrbScale variant really hides inactive orbs.
-        AnimateOrbScale(i, 0.0)
+        SetOrbActive(i, false)
       end
     end
   end
@@ -926,31 +804,47 @@ function UpdateOrbs()
   EnsureCameraPosition()
 end
 
-function EnsureCameraPosition()
-  -- Ensure camera position is set for all orbs, even if they're hidden
-  -- This reads camera position from settings and applies it to all orbs
+function EnsureCameraPosition(force)
+  -- Lightweight: apply to shown or already-loaded models.
+  -- Hidden orbs that haven't loaded yet are handled by WaitForModelsAndSetCamera
+  -- during explicit preset/model changes and first-login initialization.
+  force = force == true
   for i, orb in ipairs(orbs) do
     if orb then
-      local wasShown = orb:IsShown()
-      local wasScaled = orb:GetScale()
-      
-      -- Temporarily show and scale up the orb to ensure model is loaded and camera can be set
-      if not wasShown or wasScaled < 0.1 then
-        orb:Show()
-        orb:SetScale(1.0)
-      end
-      
-      -- Try to set camera position (force it)
-      -- This will read the camera position from settings via GetCameraPosition()
-      SetOrbCameraPosition(orb, true)
-      
-      -- Restore original state if orb was hidden/scaled down
-      if not wasShown then
-        orb:Hide()
-      end
-      if wasScaled and wasScaled < 0.1 then
-        orb:SetScale(wasScaled)
-      end
+      SetOrbCameraPosition(orb, force)
+    end
+  end
+end
+
+local function CancelCameraStabilization()
+  if cameraStabilizeTicker and cameraStabilizeTicker.Cancel then
+    pcall(cameraStabilizeTicker.Cancel, cameraStabilizeTicker)
+  end
+  cameraStabilizeTicker = nil
+end
+
+local function StartCameraStabilization()
+  -- Re-apply camera a few times to "win" against late client changes.
+  -- This is cancelable so we don't accumulate many overlapping timers.
+  CancelCameraStabilization()
+
+  if not C_Timer then
+    return
+  end
+
+  if C_Timer.NewTicker then
+    cameraStabilizeTicker = C_Timer.NewTicker(0.5, function()
+      EnsureCameraPosition(true)
+    end, 8)
+    return
+  end
+
+  if C_Timer.After then
+    local times = {0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0}
+    for _, delay in ipairs(times) do
+      C_Timer.After(delay, function()
+        EnsureCameraPosition(true)
+      end)
     end
   end
 end
@@ -965,12 +859,7 @@ function WiseHudOrbs_OnPlayerLogin()
     for i, orb in ipairs(orbs) do
       if orb then
         orb:Hide()
-        if orb.testTexture then
-          orb.testTexture:Hide()
-        end
-        if orb.texture then
-          orb.texture:Hide()
-        end
+        if orb.fallbackTexture then orb.fallbackTexture:Hide() end
       end
     end
     orbs = {}
@@ -1009,20 +898,6 @@ function WiseHudOrbs_OnPlayerLogin()
     UpdateOrbs()
   end
 
-  -- As a practical safeguard: re-apply camera settings a few times shortly after
-  -- login, so we "win" against any late changes from the client or other addons.
-  -- We spread several updates over the first few seconds to minimize the time
-  -- in which the orbs can appear with an incorrect camera.
-  if WiseHudOrbs_UpdateCameraPosition and C_Timer then
-    local times = {0.5, 1.0, 2.0, 3.0, 4.0, 5.0}
-    for _, delay in ipairs(times) do
-      C_Timer.After(delay, function()
-        if WiseHudOrbs_UpdateCameraPosition then
-          WiseHudOrbs_UpdateCameraPosition()
-        end
-      end)
-    end
-  end
 end
 
 function WiseHudOrbs_OnPowerUpdate(unit, powerType)
@@ -1043,12 +918,7 @@ function WiseHudOrbs_OnPowerUpdate(unit, powerType)
         for i, orb in ipairs(orbs) do
           if orb then
             orb:Hide()
-            if orb.testTexture then
-              orb.testTexture:Hide()
-            end
-            if orb.texture then
-              orb.texture:Hide()
-            end
+            if orb.fallbackTexture then orb.fallbackTexture:Hide() end
           end
         end
         orbs = {}
@@ -1084,8 +954,8 @@ function WiseHudOrbs_UpdateCameraPosition()
     WiseHudOrbs_ApplyModelPathToExistingOrbs()
   end
 
-  -- Use EnsureCameraPosition to set camera for all orbs, even hidden ones
-  EnsureCameraPosition()
+  -- Apply camera immediately (forced) and then stabilize it briefly
+  EnsureCameraPosition(true)
 
   -- Mark camera as initialized and fade orbs in with a fresh layout update
   if not orbsCameraReady then
@@ -1097,10 +967,16 @@ function WiseHudOrbs_UpdateCameraPosition()
     end
     UpdateOrbs()
   else
-    -- Even after initialization, an explicit camera update call
-    -- (e.g. from the options panel) can re-apply the camera for all orbs.
-    EnsureCameraPosition()
+    -- Even after initialization, re-apply camera (forced) for all orbs.
+    EnsureCameraPosition(true)
   end
+
+  StartCameraStabilization()
+end
+
+function WiseHudOrbs_UpdateCameraOnly()
+  EnsureCameraPosition(true)
+  StartCameraStabilization()
 end
 
 function WiseHudOrbs_ApplyLayout()
