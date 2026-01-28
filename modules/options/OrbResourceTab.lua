@@ -36,17 +36,7 @@ function OrbResourceTab:Create()
     end
   end)
   e.enabledCheckbox:SetPoint("TOPLEFT", e.enableSection, "TOPLEFT", 12, -12)
-  
-  -- Test Mode checkbox (not persisted - always starts as false)
-  e.testModeCheckbox = Helpers.CreateCheckbox(e.enableSection, "WiseHudOrbsTestModeCheckbox", "Test Mode (Show Max CP)", false, function(self, checked)
-    local cfg = Helpers.ensureComboTable()
-    cfg.testMode = checked
-    if WiseHudOrbs_OnPowerUpdate then
-      WiseHudOrbs_OnPowerUpdate("player")
-    end
-  end)
-  e.testModeCheckbox:SetPoint("TOPLEFT", e.enabledCheckbox, "BOTTOMLEFT", 0, -8)
-  
+
   yOffset = yOffset - 100
   
   -- Orb Position Section (now directly below enable section)
@@ -551,10 +541,6 @@ function OrbResourceTab:Refresh()
   if e.enabledCheckbox then
     e.enabledCheckbox:SetChecked(comboCfg.enabled ~= false)
   end
-  if e.testModeCheckbox then
-    -- Test Mode is not persisted - always reset to false on refresh
-    e.testModeCheckbox:SetChecked(false)
-  end
 end
 
 function OrbResourceTab:Reset()
@@ -596,7 +582,6 @@ function OrbResourceTab:Reset()
     if e.cameraZSlider.UpdateDisplay then e.cameraZSlider.UpdateDisplay(ORB_DEFAULTS.cameraZ) end
   end
   if e.enabledCheckbox then e.enabledCheckbox:SetChecked(true) end
-  if e.testModeCheckbox then e.testModeCheckbox:SetChecked(false) end
   if e.modelIdEditBox and self.GetDefaultModelId then
     e.modelIdEditBox:SetText(tostring(self.GetDefaultModelId()))
   end

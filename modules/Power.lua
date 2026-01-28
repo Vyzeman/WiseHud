@@ -69,6 +69,11 @@ function WiseHudPower_ApplyAlpha()
   local inCombat = (WiseHudCombatInfo and WiseHudCombatInfo.inCombat)
     or (UnitAffectingCombat("player") and true or false)
 
+  -- If the Orbs test mode is active, force combat alpha so the bar is fully visible
+  if WiseHudDB and WiseHudDB.comboSettings and WiseHudDB.comboSettings.testMode then
+    inCombat = true
+  end
+
   local sinceChange = WiseHudCombatInfo and WiseHudCombatInfo.lastPowerChange
     and (GetTime() - WiseHudCombatInfo.lastPowerChange) or nil
 

@@ -7,6 +7,7 @@ local ADDON_NAME = ...
 local OrbResourceTab = WiseHudOptionsOrbResourceTab
 local HealthPowerTab = WiseHudOptionsHealthPowerTab
 local CastBarTab = WiseHudOptionsCastBarTab
+local Helpers = WiseHudOptionsHelpers
 
 -- ===== Main Options Panel =====
 local function CreateOptionsPanel()
@@ -405,6 +406,30 @@ local function CreateOptionsPanel()
   
   -- Also update when panel is shown
   panel:SetScript("OnShow", function()
+    -- While the Blizzard Settings window is open, it sits on top of most UI and can't be moved.
+    -- For layout testing we raise the WiseHud frame strata temporarily so Health/Power/Cast preview
+    -- are visible behind/over the Settings panel (similar to the Orbs which already use HIGH strata).
+    if WiseHudFrame and WiseHudFrame.GetFrameStrata and WiseHudFrame.SetFrameStrata then
+      if panel._wisehudPrevStrata == nil then
+        local ok, strata = pcall(WiseHudFrame.GetFrameStrata, WiseHudFrame)
+        if ok then
+          panel._wisehudPrevStrata = strata
+        end
+      end
+      pcall(WiseHudFrame.SetFrameStrata, WiseHudFrame, "DIALOG")
+    end
+
+    -- Always enable test mode while settings are open (not persisted)
+    local comboCfg = Helpers.ensureComboTable()
+    comboCfg.testMode = true
+    if WiseHudOrbs_OnPowerUpdate then
+      WiseHudOrbs_OnPowerUpdate("player")
+    end
+    -- Update cast bar layout so its test preview is shown while settings are open
+    if WiseHudCast_ApplyLayout then
+      WiseHudCast_ApplyLayout()
+    end
+
     -- Refresh all tabs to ensure values are loaded correctly
     C_Timer.After(0.05, function()
       if orbTabInstance then orbTabInstance:Refresh() end
@@ -414,6 +439,29 @@ local function CreateOptionsPanel()
     C_Timer.After(0.1, function()
       UpdateScrollRangeForTab(selectedTab)
     end)
+  end)
+  
+  -- Deactivate test mode when panel is closed
+  panel:SetScript("OnHide", function()
+    -- Get combo settings and deactivate test mode
+    local comboCfg = Helpers.ensureComboTable()
+    if comboCfg.testMode then
+      comboCfg.testMode = nil
+      -- Update orbs to reflect the change
+      if WiseHudOrbs_OnPowerUpdate then
+        WiseHudOrbs_OnPowerUpdate("player")
+      end
+      -- Also hide cast bar preview again
+      if WiseHudCast_ApplyLayout then
+        WiseHudCast_ApplyLayout()
+      end
+    end
+
+    -- Restore WiseHud frame strata after closing settings
+    if WiseHudFrame and WiseHudFrame.SetFrameStrata and panel._wisehudPrevStrata then
+      pcall(WiseHudFrame.SetFrameStrata, WiseHudFrame, panel._wisehudPrevStrata)
+      panel._wisehudPrevStrata = nil
+    end
   end)
 
   -- Panel refresh function

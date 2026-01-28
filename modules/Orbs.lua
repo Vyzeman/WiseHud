@@ -231,6 +231,56 @@ local function WaitForModelsAndSetCamera(maxAttempts, checkInterval)
   checkInterval = checkInterval or 0.1  -- Check interval in seconds
   
   local attempts = 0
+  -- Some models won't actually load while the PlayerModel is hidden.
+  -- When the user switches presets with 0 combo points, all orbs are hidden,
+  -- so we temporarily show them with alpha=0 to force model loading, then restore.
+  local forceLoadState = {}
+
+  local function MaybeForceLoadModel(orb)
+    if not orb or forceLoadState[orb] then
+      return
+    end
+
+    -- Only do this for currently hidden/inactive orbs to avoid affecting visible ones.
+    local wasShown = false
+    local wasScale = 1.0
+    local wasAlpha = 1.0
+    pcall(function() wasShown = orb:IsShown() end)
+    pcall(function() wasScale = orb:GetScale() end)
+    pcall(function() wasAlpha = orb:GetAlpha() end)
+
+    if wasShown and wasScale and wasScale >= 0.1 then
+      return
+    end
+
+    forceLoadState[orb] = {
+      wasShown = wasShown,
+      wasScale = wasScale,
+      wasAlpha = wasAlpha,
+    }
+
+    pcall(orb.SetAlpha, orb, 0)
+    orb:Show()
+    pcall(orb.SetScale, orb, 1.0)
+  end
+
+  local function RestoreForceLoadStates()
+    for orb, st in pairs(forceLoadState) do
+      if orb and st then
+        if st.wasAlpha ~= nil then
+          pcall(orb.SetAlpha, orb, st.wasAlpha)
+        end
+        if st.wasScale ~= nil then
+          pcall(orb.SetScale, orb, st.wasScale)
+        end
+        if st.wasShown == false then
+          orb:Hide()
+        end
+      end
+    end
+    forceLoadState = {}
+  end
+
   local function checkAndSet()
     attempts = attempts + 1
     local allReady = true
@@ -247,12 +297,16 @@ local function WaitForModelsAndSetCamera(maxAttempts, checkInterval)
           SetOrbCameraPosition(orb, true)
         else
           allReady = false
+          -- Force-load models for hidden/inactive orbs so camera can be applied
+          MaybeForceLoadModel(orb)
         end
       end
     end
     
     -- If all models are ready or we've tried enough times, ensure all cameras are set
     if (allReady and hasOrbs) or attempts >= maxAttempts then
+      -- Restore any temporary show/alpha/scale changes
+      RestoreForceLoadStates()
       -- Final pass: ensure all orbs have camera set
       for _, orb in ipairs(orbs) do
         if orb then
@@ -945,6 +999,11 @@ function WiseHudOrbs_SetEnabled(enabled)
 end
 
 function WiseHudOrbs_UpdateCameraPosition()
+  -- Make sure all orb models are loaded (also for currently inactive/hidden orbs)
+  if WiseHudOrbs_ApplyModelPathToExistingOrbs then
+    WiseHudOrbs_ApplyModelPathToExistingOrbs()
+  end
+
   -- Use EnsureCameraPosition to set camera for all orbs, even hidden ones
   EnsureCameraPosition()
 end

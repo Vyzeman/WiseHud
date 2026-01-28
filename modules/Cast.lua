@@ -111,6 +111,13 @@ local castEndTime = 0
 local castSpellName = ""
 local castSpellIcon = nil
 
+-- Helper: use Orbs test mode flag as global "preview" mode for layout testing
+local function IsOrbsTestModeEnabled()
+  return WiseHudDB
+    and WiseHudDB.comboSettings
+    and WiseHudDB.comboSettings.testMode == true
+end
+
 local function GetCastLayout()
   WiseHudDB = WiseHudDB or {}
   WiseHudDB.castLayout = WiseHudDB.castLayout or {}
@@ -137,6 +144,34 @@ local function IsTextEnabled()
     return CAST_DEFAULTS.showText -- Default from central config
   end
   return cfg.showText
+end
+
+-- Show a static preview cast bar while in test mode (no real casting required)
+local function ShowCastTestPreview()
+  if not castBar or not castBG then return end
+  if not IsCastEnabled() then return end
+
+  castBG:Show()
+  castBar:Show()
+
+  -- Simple 50% fill to visualize size/position
+  castBar:SetMinMaxValues(0, 1)
+  castBar:SetValue(0.5)
+
+  -- No icon for the preview
+  if castIcon then
+    castIcon:Hide()
+  end
+
+  -- Optional label
+  if castBar.text then
+    if IsTextEnabled() then
+      castBar.text:SetText("Cast Bar Preview")
+      castBar.text:Show()
+    else
+      castBar.text:Hide()
+    end
+  end
 end
 
 local function CreateCastBar()
@@ -192,21 +227,26 @@ function WiseHudCast_ApplyLayout()
   castBG:SetSize(w, h)
   castBG:ClearAllPoints()
   castBG:SetPoint("CENTER", WiseHud, "CENTER", offsetX, offsetY)
-  -- Only show background if actually casting
-  if not isCasting and not isChanneling then
-    castBG:Hide()
-  end
 
   castBar:SetSize(w, h)
   castBar:ClearAllPoints()
   castBar:SetPoint("CENTER", WiseHud, "CENTER", offsetX, offsetY)
-  -- Only show bar if actually casting
+  -- If we are not casting/channeling, either hide completely or show a test preview
   if not isCasting and not isChanneling then
-    castBar:Hide()
-    castIcon:Hide()
-    if castBar.text then castBar.text:Hide() end
+    if IsOrbsTestModeEnabled() then
+      -- In test mode: show a static preview so users can position/style the bar
+      ShowCastTestPreview()
+    else
+      -- Normal behaviour: hide when idle
+      castBG:Hide()
+      castBar:Hide()
+      castIcon:Hide()
+      if castBar.text then castBar.text:Hide() end
+    end
   else
-    -- Show/hide text based on setting
+    -- Actively casting/channeling: show as usual and respect text setting
+    castBG:Show()
+    castBar:Show()
     if castBar.text then
       if IsTextEnabled() then
         castBar.text:Show()
