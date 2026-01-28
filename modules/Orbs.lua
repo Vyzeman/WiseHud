@@ -21,6 +21,7 @@ local orbs = {}
 local orbAnimations = {}
 local EnsureCameraPosition -- forward declaration so it can be used earlier
 local UpdateOrbs           -- forward declaration so it can be used earlier
+local orbsReinitializedAfterFirstPoints = false -- for relog fix: one-time re-create after first point
 
 -- Default camera position (X, Y, Z) from central config
 local DEFAULT_CAMERA_X = ORB_DEFAULTS.cameraX or -1.2
@@ -341,17 +342,30 @@ end
 
 -- Initialize orb camera once after login, especially for the case
 -- where the player logs in with 0 resources and all orbs are hidden.
--- This forces a camera setup pass while the models are loaded,
--- without visibly showing the orbs.
+-- We trigger the robust model-load logic in this case,
+-- without artificial test mode or layout manipulation.
 local function InitializeOrbsCameraAfterLogin()
   if not orbs or #orbs == 0 then
     return
   end
 
-  -- Unabhängig von der aktuellen Ressourcenzahl warten wir explizit
-  -- auf geladene Modelle und setzen danach für alle Orbs die Kamera.
-  -- Die Funktion selbst kümmert sich darum, versteckte Orbs kurz
-  -- unsichtbar einzublenden und den Zustand wiederherzustellen.
+  -- Only activate if we really log in with 0 points.
+  -- IMPORTANT: Do NOT use the Blizzard API GetComboPoints(unit, target) here,
+  -- but use our own helper logic directly via PowerType/UnitPower,
+  -- to avoid argument errors.
+  local points = 0
+  if GetPowerTypeForClass then
+    local powerType = GetPowerTypeForClass()
+    if powerType then
+      local maxPower = UnitPowerMax("player", powerType)
+      if maxPower and maxPower > 0 then
+        points = UnitPower("player", powerType) or 0
+      end
+    end
+  end
+  if points > 0 then return end
+
+  -- Load models and set camera, even if all orbs are hidden.
   WaitForModelsAndSetCamera()
 end
 
@@ -647,9 +661,9 @@ local function CreateOrbs()
       end
     end
 
-    -- Start fully visible; camera timers will correct zoom shortly after login
+    -- Start fully visible; no mini-scale for debugging/fine-tuning
     orb:SetAlpha(1)
-    orb:SetScale(0.01)
+    orb:SetScale(1)
     orb:ClearAllPoints()
     orb:SetPoint("CENTER", WiseHudFrame, "CENTER", 0, 0)
     
@@ -754,68 +768,23 @@ local function IsComboPointType(powerType)
 end
 
 local function AnimateOrbScale(orbIndex, targetScale)
-  if not orbs[orbIndex] then 
-    return 
-  end
-  
+  -- Simplified variant for debugging camera behavior:
+  -- no scale animation, active orbs always with scale 1.0,
+  -- inactive orbs are simply hidden.
   local orb = orbs[orbIndex]
-  local anim = orbAnimations[orbIndex]
-  
-  if not anim then
-    orbAnimations[orbIndex] = { currentScale = 0.01, targetScale = 0.01, animating = false }
-    anim = orbAnimations[orbIndex]
-  end
-  
-  -- Scale must be > 0, use 0.01 as minimum
-  local minScale = 0.01
-  if targetScale <= 0 then
-    targetScale = minScale
-  end
-  
-  -- If target scale hasn't changed, still check if orb should be displayed
-  if anim.targetScale == targetScale and not anim.animating then
-    -- Ensure orb is shown/hidden even if animation is already complete
-    if targetScale > minScale then
-      if not orb:IsShown() then
-        orb:Show()
-        if orb.testTexture then
-          orb.testTexture:Show()
-        end
-      else
-        if orb.testTexture and not orb.testTexture:IsShown() then
-          orb.testTexture:Show()
-        end
-      end
-      local currentScale = orb:GetScale()
-      if math.abs(currentScale - targetScale) > 0.01 then
-        orb:SetScale(targetScale)
-      else
-      end
-    else
-      if orb:IsShown() then
-        orb:Hide()
-      else
-      end
-    end
-    return
-  end
-  
-  anim.targetScale = targetScale
-  anim.animating = true
-  
-  if targetScale > minScale then
+  if not orb then return end
+
+  if targetScale > 0 then
     orb:Show()
+    orb:SetScale(1)
     if orb.testTexture then
       orb.testTexture:Show()
-    end
-    if anim.currentScale < minScale + 0.01 then
-      anim.currentScale = minScale + 0.01
-      orb:SetScale(anim.currentScale)
     end
   else
     if orb.testTexture then
       orb.testTexture:Hide()
     end
+    orb:Hide()
   end
 end
 
@@ -887,6 +856,18 @@ function UpdateOrbs()
   local points = GetComboPoints()
   local maxPoints = GetMaxPoints()
   
+  -- If camera is not yet initialized, keep orbs completely hidden
+  -- (except in test mode) so they don't briefly flash with
+  -- incorrect camera settings in the first combat.
+  if not orbsCameraReady and not IsTestModeEnabled() then
+    for i = 1, #orbs do
+      if orbs[i] then
+        orbs[i]:Hide()
+      end
+    end
+    return
+  end
+  
   -- In test mode, always show maximum points
   if IsTestModeEnabled() then
     points = maxPoints
@@ -931,15 +912,18 @@ function UpdateOrbs()
         end
         
         AnimateOrbScale(i, 1.0)
-        -- Set camera position if model is ready
-        SetOrbCameraPosition(orb)
       else
-        AnimateOrbScale(i, 0.01)
-        -- Set camera position even for hidden orbs
-        SetOrbCameraPosition(orb)
+        -- Use 0.0 as target scale so the simplified
+        -- AnimateOrbScale variant really hides inactive orbs.
+        AnimateOrbScale(i, 0.0)
       end
     end
   end
+
+  -- After each layout update, we enforce the current camera position
+  -- for all orbs, so that later changes (e.g. by the client when
+  -- loading models) are overwritten again.
+  EnsureCameraPosition()
 end
 
 function EnsureCameraPosition()
@@ -975,6 +959,7 @@ function WiseHudOrbs_OnPlayerLogin()
   -- Reset testMode on login (not persisted)
   local cfg = GetOrbsSettings()
   cfg.testMode = nil
+  orbsReinitializedAfterFirstPoints = false
   
   if #orbs > 0 then
     for i, orb in ipairs(orbs) do
@@ -1001,9 +986,9 @@ function WiseHudOrbs_OnPlayerLogin()
 
       CreateOrbs()
 
-      -- Spezielle Initialisierung für den Fall, dass wir mit 0 Ressourcen
-      -- einloggen: sorgt dafür, dass die Kamera einmal sinnvoll gesetzt wird,
-      -- auch wenn alle Orbs (noch) versteckt sind.
+      -- Special initialization for the case where we log in with 0 resources:
+      -- ensures that the camera is set once properly,
+      -- even if all orbs are (still) hidden.
       InitializeOrbsCameraAfterLogin()
 
       -- Apply camera immediately once after creation so the initial
@@ -1046,6 +1031,36 @@ function WiseHudOrbs_OnPowerUpdate(unit, powerType)
   if powerType then
     local currentType = GetPowerTypeForClass()
     if powerType == currentType or IsComboPointType(powerType) then
+      -- When we see points > 0 for the first time after a fresh login/relog,
+      -- we force a one-time complete re-create of the orbs. This effectively
+      -- mirrors the behavior of a /reload and fixes cases where the client
+      -- doesn't correctly render individual PlayerModel frames.
+      local points = GetComboPoints()
+      if points > 0 and not orbsReinitializedAfterFirstPoints then
+        orbsReinitializedAfterFirstPoints = true
+
+        -- Hard reset existing orbs
+        for i, orb in ipairs(orbs) do
+          if orb then
+            orb:Hide()
+            if orb.testTexture then
+              orb.testTexture:Hide()
+            end
+            if orb.texture then
+              orb.texture:Hide()
+            end
+          end
+        end
+        orbs = {}
+        orbAnimations = {}
+
+        -- Rebuild + apply camera + update layout
+        CreateOrbs()
+        if WiseHudOrbs_UpdateCameraPosition then
+          WiseHudOrbs_UpdateCameraPosition()
+        end
+      end
+
       UpdateOrbs()
     end
   else
@@ -1081,6 +1096,10 @@ function WiseHudOrbs_UpdateCameraPosition()
       end
     end
     UpdateOrbs()
+  else
+    -- Even after initialization, an explicit camera update call
+    -- (e.g. from the options panel) can re-apply the camera for all orbs.
+    EnsureCameraPosition()
   end
 end
 
