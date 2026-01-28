@@ -20,6 +20,7 @@ local ARC_LENGTH = math.rad(360)
 local orbs = {}
 local orbAnimations = {}
 local EnsureCameraPosition -- forward declaration so it can be used earlier
+local UpdateOrbs           -- forward declaration so it can be used earlier
 
 -- Default camera position (X, Y, Z) from central config
 local DEFAULT_CAMERA_X = ORB_DEFAULTS.cameraX or -1.2
@@ -336,6 +337,22 @@ local function WaitForModelsAndSetCamera(maxAttempts, checkInterval)
   
   -- Start checking
   checkAndSet()
+end
+
+-- Initialize orb camera once after login, especially for the case
+-- where the player logs in with 0 resources and all orbs are hidden.
+-- This forces a camera setup pass while the models are loaded,
+-- without visibly showing the orbs.
+local function InitializeOrbsCameraAfterLogin()
+  if not orbs or #orbs == 0 then
+    return
+  end
+
+  -- Unabhängig von der aktuellen Ressourcenzahl warten wir explizit
+  -- auf geladene Modelle und setzen danach für alle Orbs die Kamera.
+  -- Die Funktion selbst kümmert sich darum, versteckte Orbs kurz
+  -- unsichtbar einzublenden und den Zustand wiederherzustellen.
+  WaitForModelsAndSetCamera()
 end
 
 function WiseHudOrbs_ApplyModelPathToExistingOrbs()
@@ -857,7 +874,7 @@ function WiseHudOrbs_UpdateAnimations(elapsed)
   end
 end
 
-local function UpdateOrbs()
+function UpdateOrbs()
   if not IsOrbsEnabled() then
     for i = 1, #orbs do
       if orbs[i] then
@@ -983,6 +1000,11 @@ function WiseHudOrbs_OnPlayerLogin()
       if not IsOrbsEnabled() then return end
 
       CreateOrbs()
+
+      -- Spezielle Initialisierung für den Fall, dass wir mit 0 Ressourcen
+      -- einloggen: sorgt dafür, dass die Kamera einmal sinnvoll gesetzt wird,
+      -- auch wenn alle Orbs (noch) versteckt sind.
+      InitializeOrbsCameraAfterLogin()
 
       -- Apply camera immediately once after creation so the initial
       -- visible state already uses the correct camera settings.
