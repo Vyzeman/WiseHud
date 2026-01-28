@@ -110,6 +110,8 @@ WiseHud:SetScript("OnEvent", function(self, event, ...)
     if WiseHudCast_OnSpellCastChannelStop then
       WiseHudCast_OnSpellCastChannelStop(unit, castGUID, spellID)
     end
+  elseif event == "PLAYER_ENTERING_WORLD" then
+    -- Currently not used for orbs; kept for future hooks if needed.
   end
 end)
 
@@ -141,4 +143,5 @@ WiseHud:RegisterEvent("UNIT_SPELLCAST_DELAYED")
 WiseHud:RegisterEvent("UNIT_SPELLCAST_CHANNEL_START")
 WiseHud:RegisterEvent("UNIT_SPELLCAST_CHANNEL_UPDATE")
 WiseHud:RegisterEvent("UNIT_SPELLCAST_CHANNEL_STOP")
+WiseHud:RegisterEvent("PLAYER_ENTERING_WORLD")
 

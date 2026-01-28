@@ -18,7 +18,11 @@ end
 function OrbResourceTab:Create()
   local comboCfg = Helpers.ensureComboTable()
   local tab = self
-  comboCfg.modelPreset = comboCfg.modelPreset or "default"
+  -- If no preset is stored yet, default to the "Void Orb" preset
+  -- (key = "void_orb" in the central config presets).
+  -- Older profiles may still have "default" stored; those are treated
+  -- as "void_orb" further below when resolving the active key.
+  comboCfg.modelPreset = comboCfg.modelPreset or "void_orb"
   local e = self.elements
   
   local yOffset = -20
@@ -114,10 +118,13 @@ function OrbResourceTab:Create()
 
   local function GetCurrentPresetKey()
     local cfg = Helpers.ensureComboTable()
-    if cfg.modelPreset and cfg.modelPreset ~= "" then
-      return cfg.modelPreset
+    local key = cfg.modelPreset
+    -- Treat missing/empty or legacy "default" as "void_orb",
+    -- so the Void Orb preset is shown as the initial selection.
+    if not key or key == "" or key == "default" then
+      return "void_orb"
     end
-    return "default"
+    return key
   end
 
   -- Preset dropdown
@@ -390,7 +397,7 @@ function OrbResourceTab:Create()
 
   -- Initialize preset dropdown selection + dependent UI
   if self.SetModelPresetSelection then
-    self:SetModelPresetSelection(comboCfg.modelPreset or "default")
+    self:SetModelPresetSelection(GetCurrentPresetKey())
   end
 
   -- Calculate yOffset for next section: model section height (140) + title space (28) + padding
@@ -458,7 +465,7 @@ function OrbResourceTab:Create()
 
   -- Ensure camera section visibility & reset button position match current preset
   if UpdatePresetUI then
-    UpdatePresetUI(comboCfg.modelPreset or "default")
+    UpdatePresetUI(GetCurrentPresetKey())
   end
 end
 
@@ -473,7 +480,16 @@ function OrbResourceTab:Refresh()
 
   -- Update preset dropdown + dependent UI
   if self.SetModelPresetSelection then
-    self:SetModelPresetSelection(comboCfg.modelPreset or "default")
+    -- Map legacy "default" and empty values to "void_orb" for display
+    local function GetCurrentPresetKey()
+      local cfg = Helpers.ensureComboTable()
+      local key = cfg.modelPreset
+      if not key or key == "" or key == "default" then
+        return "void_orb"
+      end
+      return key
+    end
+    self:SetModelPresetSelection(GetCurrentPresetKey())
   end
   
   -- Helper function to refresh a slider with a value from config
@@ -586,7 +602,8 @@ function OrbResourceTab:Reset()
     e.modelIdEditBox:SetText(tostring(self.GetDefaultModelId()))
   end
   if self.SetModelPresetSelection then
-    self:SetModelPresetSelection("default")
+    -- When resetting, also show the Void Orb preset as the default selection
+    self:SetModelPresetSelection("void_orb")
   end
   
   if WiseHudOrbs_SetEnabled then WiseHudOrbs_SetEnabled(true) end

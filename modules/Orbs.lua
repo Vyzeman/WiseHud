@@ -19,6 +19,7 @@ local ARC_LENGTH = math.rad(360)
 
 local orbs = {}
 local orbAnimations = {}
+local EnsureCameraPosition -- forward declaration so it can be used earlier
 
 -- Default camera position (X, Y, Z) from central config
 local DEFAULT_CAMERA_X = ORB_DEFAULTS.cameraX or -1.2
@@ -48,7 +49,14 @@ end
 -- Get camera position from settings / presets
 local function GetCameraPosition()
   local cfg = GetOrbsSettings()
-  local presetKey = cfg.modelPreset or "default"
+  local presetKey = cfg.modelPreset
+
+  -- Map legacy/empty "default" to the actual default preset key ("void_orb"),
+  -- just like the options UI does. This ensures login / reload use the same
+  -- camera values as when you pick the preset in the config panel.
+  if not presetKey or presetKey == "" or presetKey == "default" then
+    presetKey = "void_orb"
+  end
   local x, y, z
 
   -- For non-custom presets, use camera values from the preset table (if available)
@@ -136,7 +144,14 @@ end
 
 local function GetModelPath()
   local cfg = GetOrbsSettings()
-  local presetKey = cfg.modelPreset or "default"
+  local presetKey = cfg.modelPreset
+
+  -- Keep preset resolution consistent with the options UI:
+  -- treat nil/empty/"default" as "void_orb" so the same model & camera
+  -- are used on login/reload as when selecting the preset in the UI.
+  if not presetKey or presetKey == "" or presetKey == "default" then
+    presetKey = "void_orb"
+  end
 
   -- If a non-custom preset is selected, use its modelId from the preset table
   if presetKey ~= CUSTOM_PRESET_KEY then
@@ -181,12 +196,12 @@ local function ApplyModelPathToExistingOrbs()
           local ok = pcall(orb.SetModel, orb, asNumber)
           if ok then
             success = true
+            -- Once the model is applied, configure model + camera after a short delay
             C_Timer.After(0.1, function()
               if not orb or not orb.SetModelScale then
                 return
               end
-              pcall(orb.SetKeepModelOnHide, orb, true)
-              pcall(orb.SetModelScale, orb, 1)
+              ConfigureOrbModel(orb)
               orb:SetAlpha(1)
             end)
           else
@@ -574,18 +589,18 @@ local function CreateOrbs()
       end
     end
     
-    if asNumber then
-      local ok, err = pcall(orb.SetModel, orb, asNumber)
-      if ok then
-        C_Timer.After(0.1, function()
-          if not orb or not orb.SetModelScale then
-            return
-          end
-          pcall(orb.SetKeepModelOnHide, orb, true)
-          pcall(orb.SetModelScale, orb, 1)
-        end)
-        modelLoaded = true
-      else
+        if asNumber then
+          local ok, err = pcall(orb.SetModel, orb, asNumber)
+          if ok then
+            -- After the model is set, configure model & camera once it has loaded
+            C_Timer.After(0.1, function()
+              if not orb or not orb.SetModelScale then
+                return
+              end
+              ConfigureOrbModel(orb)
+            end)
+            modelLoaded = true
+          else
         local ok2, err2 = pcall(orb.SetDisplayInfo, orb, asNumber)
         if ok2 then
           C_Timer.After(0.1, function()
@@ -615,6 +630,7 @@ local function CreateOrbs()
       end
     end
 
+    -- Start fully visible; camera timers will correct zoom shortly after login
     orb:SetAlpha(1)
     orb:SetScale(0.01)
     orb:ClearAllPoints()
@@ -850,7 +866,7 @@ local function UpdateOrbs()
     end
     return
   end
-  
+
   local points = GetComboPoints()
   local maxPoints = GetMaxPoints()
   
@@ -909,7 +925,7 @@ local function UpdateOrbs()
   end
 end
 
-local function EnsureCameraPosition()
+function EnsureCameraPosition()
   -- Ensure camera position is set for all orbs, even if they're hidden
   -- This reads camera position from settings and applies it to all orbs
   for i, orb in ipairs(orbs) do
@@ -958,21 +974,48 @@ function WiseHudOrbs_OnPlayerLogin()
     orbs = {}
     orbAnimations = {}
   end
-  CreateOrbs()
-  
-  -- Temporarily show all orbs to ensure models are loaded
-  for i, orb in ipairs(orbs) do
-    if orb then
-      orb:Show()
+
+  -- Delay orb creation slightly after login/reload so the game client and
+  -- other addons have time to finish their own model/camera initialization.
+  -- This avoids showing "ugly" orbs during the first moments after loading.
+  if C_Timer and C_Timer.After then
+    C_Timer.After(2.0, function()
+      if not IsOrbsEnabled() then return end
+
+      CreateOrbs()
+
+      -- Apply camera immediately once after creation so the initial
+      -- visible state already uses the correct camera settings.
+      if WiseHudOrbs_UpdateCameraPosition then
+        WiseHudOrbs_UpdateCameraPosition()
+      end
+
+      -- Now position/update orbs based on current power so they appear.
+      UpdateOrbs()
+    end)
+  else
+    -- Fallback: immediate creation if C_Timer is unavailable
+    CreateOrbs()
+    if WiseHudOrbs_UpdateCameraPosition then
+      WiseHudOrbs_UpdateCameraPosition()
+    end
+    UpdateOrbs()
+  end
+
+  -- As a practical safeguard: re-apply camera settings a few times shortly after
+  -- login, so we "win" against any late changes from the client or other addons.
+  -- We spread several updates over the first few seconds to minimize the time
+  -- in which the orbs can appear with an incorrect camera.
+  if WiseHudOrbs_UpdateCameraPosition and C_Timer then
+    local times = {0.5, 1.0, 2.0, 3.0, 4.0, 5.0}
+    for _, delay in ipairs(times) do
+      C_Timer.After(delay, function()
+        if WiseHudOrbs_UpdateCameraPosition then
+          WiseHudOrbs_UpdateCameraPosition()
+        end
+      end)
     end
   end
-  
-  -- Now update orbs (this will hide them if points are 0)
-  UpdateOrbs()
-  
-  -- Wait for models to load and set camera position using polling approach
-  -- This replaces the multiple timer-based retries with a single polling function
-  WaitForModelsAndSetCamera()
 end
 
 function WiseHudOrbs_OnPowerUpdate(unit, powerType)
@@ -1006,6 +1049,17 @@ function WiseHudOrbs_UpdateCameraPosition()
 
   -- Use EnsureCameraPosition to set camera for all orbs, even hidden ones
   EnsureCameraPosition()
+
+  -- Mark camera as initialized and fade orbs in with a fresh layout update
+  if not orbsCameraReady then
+    orbsCameraReady = true
+    for _, orb in ipairs(orbs) do
+      if orb then
+        orb:SetAlpha(1)
+      end
+    end
+    UpdateOrbs()
+  end
 end
 
 function WiseHudOrbs_ApplyLayout()
