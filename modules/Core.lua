@@ -19,7 +19,16 @@ end
 
 function WiseHudCore_OnPowerEvent(unit, powerType)
   if unit == "player" then
-    WiseHudCombatInfo.lastPowerChange = GetTime()
+    -- Only real resource changes (e.g. mana/energy/rage) should
+    -- affect the power alpha, not combo points or similar.
+    local currentType, currentToken = UnitPowerType("player")
+
+    -- Depending on the client, the event provides either the token ("MANA", "ENERGY", ...)
+    -- or the numeric index. We only accept it when it matches the player's
+    -- current primary resource.
+    if powerType == currentToken or powerType == currentType then
+      WiseHudCombatInfo.lastPowerChange = GetTime()
+    end
   end
   if WiseHudPower_OnPowerEvent then
     WiseHudPower_OnPowerEvent(unit, powerType)
@@ -50,13 +59,23 @@ end
 
 function WiseHudCore_OnUpdate(elapsed)
   updateElapsed = updateElapsed + elapsed
-  if updateElapsed >= 0.2 then
+  -- Recompute target alpha on a throttled interval to avoid
+  -- running the heavier state checks every single frame.
+  -- 0.3s is a good compromise between responsiveness and performance.
+  if updateElapsed >= 0.3 then
     updateElapsed = 0
-    if WiseHudHealth_ApplyAlpha then
-      WiseHudHealth_ApplyAlpha()
-    end
-    if WiseHudPower_ApplyAlpha then
-      WiseHudPower_ApplyAlpha()
+
+    -- In combat the alpha stays fixed (combat alpha), so we only
+    -- need to recompute the target alpha out of combat
+    -- (for the transition from "nonFull" to "idle" after FADE_IDLE_DELAY).
+    local inCombat = WiseHudCombatInfo and WiseHudCombatInfo.inCombat
+    if not inCombat then
+      if WiseHudHealth_ApplyAlpha then
+        WiseHudHealth_ApplyAlpha()
+      end
+      if WiseHudPower_ApplyAlpha then
+        WiseHudPower_ApplyAlpha()
+      end
     end
   end
 

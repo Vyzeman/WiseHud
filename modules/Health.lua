@@ -4,8 +4,8 @@ local ADDON_NAME = ...
 
 local WiseHud = WiseHudFrame
 
--- Central defaults (shared with Power)
-local HP_DEFAULTS = WiseHudConfig.GetHealthPowerDefaults()
+-- Central defaults (shared with Power, provided by Core)
+local HP_DEFAULTS = WiseHudHP_DEFAULTS or WiseHudConfig.GetHealthPowerDefaults()
 
 -- Forward declarations for health bar frames and alpha state
 local healthBar, healthBG
@@ -37,41 +37,9 @@ function WiseHudHealth_UpdateColor()
   healthBar:SetStatusBarColor(r, g, b)
 end
 
--- Layout defaults (from central config)
-local DEFAULT_BAR_WIDTH   = HP_DEFAULTS.layout.width   or 290
-local DEFAULT_BAR_HEIGHT  = HP_DEFAULTS.layout.height  or 415
-local DEFAULT_BAR_OFFSETX = HP_DEFAULTS.layout.offsetX or 185
-local DEFAULT_BAR_OFFSETY = HP_DEFAULTS.layout.offsetY or 90
-
--- Alpha defaults in percent (0–100), from central config
-local DEFAULT_ALPHA_COMBAT    = HP_DEFAULTS.alpha.combat   or 70
-local DEFAULT_ALPHA_NONFULL   = HP_DEFAULTS.alpha.nonFull  or 40
-local DEFAULT_ALPHA_FULL_IDLE = HP_DEFAULTS.alpha.fullIdle or 0
-
-local function GetBarLayout()
-  local cfg = (WiseHudDB and WiseHudDB.barLayout) or {}
-  local w  = cfg.width   or DEFAULT_BAR_WIDTH
-  local h  = cfg.height  or DEFAULT_BAR_HEIGHT
-  local ox = cfg.offset  or DEFAULT_BAR_OFFSETX
-  local oy = cfg.offsetY or DEFAULT_BAR_OFFSETY
-  return w, h, ox, oy
-end
-
 local function IsHealthEnabled()
   local cfg = (WiseHudDB and WiseHudDB.barLayout) or {}
   return cfg.healthEnabled ~= false
-end
-
-local FADE_IDLE_DELAY = 5 -- Seconds since last health change until full idle
-
-local function GetAlphaSettings()
-  WiseHudDB = WiseHudDB or {}
-  WiseHudDB.alphaSettings = WiseHudDB.alphaSettings or {}
-  local cfg = WiseHudDB.alphaSettings
-  local combat    = cfg.combatAlpha    or DEFAULT_ALPHA_COMBAT
-  local nonFull   = cfg.nonFullAlpha   or DEFAULT_ALPHA_NONFULL
-  local fullIdle  = cfg.fullIdleAlpha  or DEFAULT_ALPHA_FULL_IDLE
-  return combat / 100, nonFull / 100, fullIdle / 100
 end
 
 function WiseHudHealth_ApplyAlpha()
@@ -84,28 +52,8 @@ function WiseHudHealth_ApplyAlpha()
     return
   end
 
-  local combatAlpha, nonFullAlpha, fullIdleAlpha = GetAlphaSettings()
-
-  local inCombat = (WiseHudCombatInfo and WiseHudCombatInfo.inCombat)
-    or (UnitAffectingCombat("player") and true or false)
-
-  -- If the Orbs test mode is active, force combat alpha so the bar is fully visible
-  if WiseHudDB and WiseHudDB.comboSettings and WiseHudDB.comboSettings.testMode then
-    inCombat = true
-  end
-
-  local sinceChange = WiseHudCombatInfo and WiseHudCombatInfo.lastHealthChange
-    and (GetTime() - WiseHudCombatInfo.lastHealthChange) or nil
-
-  if inCombat then
-    targetAlpha = combatAlpha
-  elseif sinceChange and sinceChange < FADE_IDLE_DELAY then
-    -- Recently health changed -> non-full alpha
-    targetAlpha = nonFullAlpha
-  else
-    -- No change for a long time -> full idle
-    targetAlpha = fullIdleAlpha
-  end
+  -- Compute the desired alpha for the health bar from shared helper
+  targetAlpha = WiseHudHP_ComputeTargetAlpha("lastHealthChange")
 
   -- Initial snapping if no alpha has been set yet
   if currentAlpha == nil then
@@ -118,19 +66,8 @@ end
 function WiseHudHealth_UpdateAlpha(elapsed)
   if not healthBar or not healthBG then return end
   if targetAlpha == nil then return end
-
-  if currentAlpha == nil then
-    currentAlpha = targetAlpha
-  end
-
-  local speed = 5 -- Higher = faster transitions
-  local diff = targetAlpha - currentAlpha
-
-  if math.abs(diff) < 0.01 then
-    currentAlpha = targetAlpha
-  else
-    currentAlpha = currentAlpha + diff * math.min(1, speed * elapsed)
-  end
+  
+  currentAlpha = WiseHudHP_SmoothAlpha(currentAlpha, targetAlpha, elapsed)
 
   healthBar:SetAlpha(currentAlpha)
   healthBG:SetAlpha(currentAlpha)
@@ -146,7 +83,7 @@ function WiseHudHealth_ApplyLayout()
     return
   end
   
-  local w, h, offsetX, offsetY = GetBarLayout()
+  local w, h, offsetX, offsetY = WiseHudHP_GetBarLayout()
 
   healthBG:SetSize(w, h)
   healthBG:ClearAllPoints()
@@ -192,6 +129,7 @@ local function UpdateHealth()
   local hpMax = UnitHealthMax("player")
   if hpMax and hpMax > 0 then
     healthBar:SetMinMaxValues(0, hpMax)
+    -- Directly set the player health value (no smoothing, avoids secret-value math issues)
     healthBar:SetValue(hp)
   end
 

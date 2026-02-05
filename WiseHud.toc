@@ -21,6 +21,7 @@ libs\LibSharedMedia-3.0\LibSharedMedia-3.0\LibSharedMedia-3.0.lua
 # Main addon files
 WiseHud.lua
 modules\Config.lua
+modules\HealthPowerShared.lua
 modules\Core.lua
 modules\Health.lua
 modules\Power.lua

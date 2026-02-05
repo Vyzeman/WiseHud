@@ -18,7 +18,7 @@ WiseHud:SetScript("OnEvent", function(self, event, ...)
       WiseHudOptions_OnPlayerLogin()
     end
 
-    -- Core-Init (Combat/Change-Status)
+    -- Core init (combat/change state)
     if WiseHudCore_OnPlayerLogin then
       WiseHudCore_OnPlayerLogin()
     end
