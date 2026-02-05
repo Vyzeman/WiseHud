@@ -89,6 +89,8 @@ WiseHudConfig.defaults.orbs = {
   x      = 0,
   y      = -50,
   radius = 35,
+  -- Layout type: "circle" (default), "horizontal", "vertical"
+  layoutType = "circle",
 
   -- Visual/layout constants
   orbSize      = 54,

@@ -44,7 +44,9 @@ function OrbResourceTab:Create()
   yOffset = yOffset - 100
   
   -- Orb Position Section (now directly below enable section)
-  e.positionSection = Helpers.CreateSectionFrame(self.parent, "WiseHudOrbsPositionSection", "Orb Position", 500, 200)
+  -- Height slightly oversized so all controls (X/Y, Radius, Layout) stay well inside
+  -- without needing pixel-perfect manual tuning.
+  e.positionSection = Helpers.CreateSectionFrame(self.parent, "WiseHudOrbsPositionSection", "Orb Position", 500, 300)
   
   -- Position title above section
   if e.positionSection.titleText then
@@ -54,13 +56,29 @@ function OrbResourceTab:Create()
   
   e.positionSection:SetPoint("TOPLEFT", self.parent, "TOPLEFT", 20, yOffset)
   
+  -- Layout type dropdown (circular / horizontal / vertical) – placed at top of section
+  local function GetCurrentLayoutType()
+    local cfg = Helpers.ensureComboTable()
+    return cfg.layoutType or ORB_DEFAULTS.layoutType or "circle"
+  end
+
+  local layoutLabel = e.positionSection:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+  layoutLabel:SetPoint("TOPLEFT", e.positionSection, "TOPLEFT", 12, -12)
+  layoutLabel:SetText("Layout")
+  layoutLabel:SetTextColor(1, 1, 1)
+
+  local layoutDropdown = CreateFrame("Frame", "WiseHudOrbsLayoutDropdown", e.positionSection, "UIDropDownMenuTemplate")
+  layoutDropdown:SetPoint("TOPLEFT", layoutLabel, "BOTTOMLEFT", -16, -4)
+  layoutDropdown:SetWidth(160)
+  e.layoutDropdown = layoutDropdown
+
   -- Combo Points X Position
   e.xSlider = Helpers.CreateSlider(e.positionSection, "WiseHudOrbsXSlider", "X Position", -400, 400, 5, comboCfg.x or ORB_DEFAULTS.x, nil, function(self, value)
     local cfg = Helpers.ensureComboTable()
     cfg.x = value
     if WiseHudOrbs_ApplyLayout then WiseHudOrbs_ApplyLayout() end
   end)
-  e.xSlider:SetPoint("TOPLEFT", e.positionSection, "TOPLEFT", 12, -12)
+  e.xSlider:SetPoint("TOPLEFT", layoutDropdown, "BOTTOMLEFT", 16, -16)
   
   -- Combo Points Y Position
   e.ySlider = Helpers.CreateSlider(e.positionSection, "WiseHudOrbsYSlider", "Y Position", -200, 80, 5, comboCfg.y or ORB_DEFAULTS.y, nil, function(self, value)
@@ -77,9 +95,56 @@ function OrbResourceTab:Create()
     if WiseHudOrbs_ApplyLayout then WiseHudOrbs_ApplyLayout() end
   end)
   e.radiusSlider:SetPoint("TOPLEFT", e.ySlider, "BOTTOMLEFT", 0, -20)
+
+  self.SetLayoutSelection = function(_, layoutKey)
+    layoutKey = layoutKey or GetCurrentLayoutType()
+    local displayName = "Circular"
+    if layoutKey == "horizontal" then
+      displayName = "Horizontal"
+    elseif layoutKey == "vertical" then
+      displayName = "Vertical"
+    end
+
+    if UIDropDownMenu_SetSelectedValue then
+      UIDropDownMenu_SetSelectedValue(layoutDropdown, layoutKey)
+    end
+    if UIDropDownMenu_SetText then
+      UIDropDownMenu_SetText(layoutDropdown, displayName)
+    end
+  end
+
+  if UIDropDownMenu_Initialize then
+    UIDropDownMenu_Initialize(layoutDropdown, function(dropdown, level)
+      level = level or 1
+      if level ~= 1 then return end
+
+      local currentLayout = GetCurrentLayoutType()
+      local function AddLayoutOption(text, key)
+        local info = UIDropDownMenu_CreateInfo and UIDropDownMenu_CreateInfo() or {}
+        info.text = text
+        info.value = key
+        info.checked = (key == currentLayout)
+        info.func = function()
+          local cfg = Helpers.ensureComboTable()
+          cfg.layoutType = key
+          if tab.SetLayoutSelection then
+            tab:SetLayoutSelection(key)
+          end
+          if WiseHudOrbs_ApplyLayout then
+            WiseHudOrbs_ApplyLayout()
+          end
+        end
+        UIDropDownMenu_AddButton(info, level)
+      end
+
+      AddLayoutOption("Circular", "circle")
+      AddLayoutOption("Horizontal", "horizontal")
+      AddLayoutOption("Vertical", "vertical")
+    end)
+  end
   
-  -- Calculate yOffset for next section: position section height (200) + title space (28) + padding
-  yOffset = yOffset - 200 - 20 -- Section height + extra padding
+  -- Calculate yOffset for next section: position section height (300) + title space (28) + padding
+  yOffset = yOffset - 300 - 20 -- Section height + extra padding
   
   -- Model Settings Section (with presets + optional custom settings) – now below position settings
   e.modelSection = Helpers.CreateSectionFrame(self.parent, "WiseHudOrbsModelSection", "Model Settings", 500, 140)
@@ -99,7 +164,7 @@ function OrbResourceTab:Create()
     return ORB_DEFAULTS.modelId
   end
   
-  -- Preset dropdown label
+  -- Preset dropdown label (in Model Settings section)
   local modelLabel = e.modelSection:CreateFontString(nil, "ARTWORK", "GameFontNormal")
   modelLabel:SetPoint("TOPLEFT", e.modelSection, "TOPLEFT", 12, -12)
   modelLabel:SetText("Model Preset:")
@@ -379,7 +444,7 @@ function OrbResourceTab:Create()
   if self.SetModelPresetSelection then
     self:SetModelPresetSelection(GetCurrentPresetKey())
   end
-
+  
   -- Calculate yOffset for next section: model section height (140) + title space (28) + padding
   yOffset = yOffset - 140 - 20 -- Section height + extra padding
   
@@ -431,7 +496,7 @@ function OrbResourceTab:Create()
   e.cameraZSlider:SetPoint("TOPLEFT", e.cameraYSlider, "BOTTOMLEFT", 0, -20)
   
   self.GetDefaultModelId = GetDefaultModelId
-
+  
   -- Calculate yOffset for reset button: camera section bottom + padding
   yOffset = yOffset - 200 - 40 -- Section height + padding
   
@@ -538,6 +603,12 @@ function OrbResourceTab:Refresh()
   RefreshSlider(e.cameraXSlider, comboCfg.cameraX, ORB_DEFAULTS.cameraX)
   RefreshSlider(e.cameraYSlider, comboCfg.cameraY, ORB_DEFAULTS.cameraY)
   RefreshSlider(e.cameraZSlider, comboCfg.cameraZ, ORB_DEFAULTS.cameraZ)
+
+  -- Update layout dropdown
+  if self.SetLayoutSelection and e.layoutDropdown then
+    local layoutKey = comboCfg.layoutType or ORB_DEFAULTS.layoutType or "circle"
+    self:SetLayoutSelection(layoutKey)
+  end
   
   -- Update checkboxes
   if e.enabledCheckbox then
@@ -557,6 +628,7 @@ function OrbResourceTab:Reset()
   comboCfg.testMode = nil
   comboCfg.modelId = nil
   comboCfg.modelPreset = nil
+  comboCfg.layoutType = nil
   
   local e = self.elements
   if e.xSlider and e.xSlider.slider then 
@@ -586,6 +658,9 @@ function OrbResourceTab:Reset()
   if e.enabledCheckbox then e.enabledCheckbox:SetChecked(true) end
   if e.modelIdEditBox and self.GetDefaultModelId then
     e.modelIdEditBox:SetText(tostring(self.GetDefaultModelId()))
+  end
+  if self.SetLayoutSelection then
+    self:SetLayoutSelection(ORB_DEFAULTS.layoutType or "circle")
   end
   if self.SetModelPresetSelection then
     -- When resetting, also show the Void Orb preset as the default selection

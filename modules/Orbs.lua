@@ -135,6 +135,11 @@ local function GetOrbsRadius()
   return cfg.radius or DEFAULT_RADIUS
 end
 
+local function GetOrbsLayoutType()
+  local cfg = GetOrbsSettings()
+  return cfg.layoutType or ORB_DEFAULTS.layoutType or "circle"
+end
+
 local function IsOrbsEnabled()
   local cfg = GetOrbsSettings()
   return cfg.enabled ~= false
@@ -765,18 +770,46 @@ function UpdateOrbs()
     if orb then
       if i <= points then
         local x, y
-        
-        if activeCount == 1 then
-          x = 0
-          y = 0
+        local layout = GetOrbsLayoutType()
+        local radius = GetOrbsRadius()
+
+        if layout == "horizontal" then
+          -- Evenly distribute orbs along a horizontal line centered on (0,0)
+          if activeCount == 1 then
+            x = 0
+            y = 0
+          else
+            local spacing = radius
+            local middleIndex = (activeCount + 1) / 2
+            local offsetFromMiddle = i - middleIndex
+            x = offsetFromMiddle * spacing
+            y = 0
+          end
+        elseif layout == "vertical" then
+          -- Evenly distribute orbs along a vertical line centered on (0,0)
+          if activeCount == 1 then
+            x = 0
+            y = 0
+          else
+            local spacing = radius
+            local middleIndex = (activeCount + 1) / 2
+            local offsetFromMiddle = i - middleIndex
+            x = 0
+            y = offsetFromMiddle * spacing
+          end
         else
-          local angleStep = ARC_LENGTH / activeCount
-          local middleIndex = math.ceil(activeCount / 2)
-          local offsetFromMiddle = (middleIndex - i) * angleStep
-          local angle = TOP_ANGLE - offsetFromMiddle
-          local radius = GetOrbsRadius()
-          x = math.cos(angle) * radius
-          y = math.sin(angle) * radius
+          -- Default circular / arc layout
+          if activeCount == 1 then
+            x = 0
+            y = 0
+          else
+            local angleStep = ARC_LENGTH / activeCount
+            local middleIndex = math.ceil(activeCount / 2)
+            local offsetFromMiddle = (middleIndex - i) * angleStep
+            local angle = TOP_ANGLE - offsetFromMiddle
+            x = math.cos(angle) * radius
+            y = math.sin(angle) * radius
+          end
         end
         
         local offsetX = GetOrbsX()
