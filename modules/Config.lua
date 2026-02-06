@@ -111,7 +111,7 @@ WiseHudConfig.defaults.orbs = {
 WiseHudConfig.defaults.orbPresets = {
   {
     key     = "void_orb",
-    name    = "Void Orb",
+    name    = "Void",
     modelId = WiseHudConfig.defaults.orbs.modelId,
     cameraX = WiseHudConfig.defaults.orbs.cameraX,
     cameraY = WiseHudConfig.defaults.orbs.cameraY,
@@ -119,7 +119,7 @@ WiseHudConfig.defaults.orbPresets = {
   },
   {
     key     = "flame_orb",
-    name    = "Flame Orb",
+    name    = "Flame",
     modelId = 450902,
     cameraX = -3,
     cameraY =  0.0,
@@ -127,7 +127,7 @@ WiseHudConfig.defaults.orbPresets = {
   },
   {
     key     = "flame_orb_2",
-    name    = "Flame Orb 2",
+    name    = "White Flame",
     modelId = 450903,
     cameraX = -3,
     cameraY =  0.0,
@@ -135,7 +135,7 @@ WiseHudConfig.defaults.orbPresets = {
   },
   {
     key     = "magma_orb",
-    name    = "Magma Orb",
+    name    = "Magma",
     modelId = 524767,
     cameraX = 0,
     cameraY = 0,
@@ -143,7 +143,7 @@ WiseHudConfig.defaults.orbPresets = {
   },
   {
     key     = "chi_orb",
-    name    = "Chi Orb",
+    name    = "Chi",
     modelId = 610172,
     cameraX = 0,
     cameraY = 0,
@@ -151,7 +151,7 @@ WiseHudConfig.defaults.orbPresets = {
   },
   {
     key     = "solar_orb",
-    name    = "Solar Orb",
+    name    = "Solar",
     modelId = 959518,
     cameraX = 0,
     cameraY = 0,
@@ -159,7 +159,7 @@ WiseHudConfig.defaults.orbPresets = {
   },
   {
     key     = "shadow_orb",
-    name    = "Shadow Orb",
+    name    = "Shadow",
     modelId = 3081600,
     cameraX = 0,
     cameraY = 0,
@@ -167,7 +167,7 @@ WiseHudConfig.defaults.orbPresets = {
   },
   {
     key     = "frost_orb",
-    name    = "Frost Orb",
+    name    = "Frost",
     modelId = 3567592,
     cameraX = 0,
     cameraY = 0,
@@ -175,7 +175,7 @@ WiseHudConfig.defaults.orbPresets = {
   },
   {
     key     = "maw_orb",
-    name    = "Maw Orb",
+    name    = "Maw",
     modelId = 4058682,
     cameraX = -3,
     cameraY =  0.0,
@@ -183,8 +183,32 @@ WiseHudConfig.defaults.orbPresets = {
   },
   {
     key     = "earth_orb",
-    name    = "Earth Orb",
+    name    = "Earth",
     modelId = 4204648,
+    cameraX = -3,
+    cameraY =  0.0,
+    cameraZ =  -1.7,
+  },
+  {
+    key     = "lightning_orb",
+    name    = "Lightning",
+    modelId = 840357,
+    cameraX = -3,
+    cameraY =  0.0,
+    cameraZ =  -1.7,
+  },
+  {
+    key     = "purple_lightning_orb",
+    name    = "Purple Lightning",
+    modelId = 840373,
+    cameraX = -3,
+    cameraY =  0.0,
+    cameraZ =  -1.7,
+  },
+  {
+    key     = "green_lightning_orb",
+    name    = "Green Lightning",
+    modelId = 1502965,
     cameraX = -3,
     cameraY =  0.0,
     cameraZ =  -1.7,

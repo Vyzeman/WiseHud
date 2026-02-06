@@ -48,10 +48,61 @@ local function GetOrbsSettings()
   return WiseHudDB.comboSettings
 end
 
+-- Determine class/spec specific default orb preset.
+-- Falls back to "void_orb" if nothing matches or APIs are unavailable.
+local function GetDefaultOrbPresetForClass()
+  local _, class = UnitClass("player")
+  if not class then
+    return "void_orb"
+  end
+
+  class = string.upper(class)
+
+  local specId = nil
+  -- Use globals via _G to avoid bare undefined globals for the linter.
+  local getSpec = _G and _G.GetSpecialization or nil
+  local getSpecInfo = _G and _G.GetSpecializationInfo or nil
+  if getSpec and getSpecInfo then
+    local specIndex = getSpec()
+    if specIndex then
+      specId = getSpecInfo(specIndex)
+    end
+  end
+
+  -- Windwalker Monk -> Chi
+  -- Windwalker spec ID is 269 in Retail.
+  if class == "MONK" and specId == 269 then
+    return "chi_orb"
+  end
+
+  -- Rogue (all specs) -> White Flame
+  if class == "ROGUE" then
+    return "flame_orb_2"
+  end
+
+  -- Feral Druid (spec ID 103) -> White Flame
+  if class == "DRUID" and specId == 103 then
+    return "flame_orb_2"
+  end
+
+  -- Holy specs -> Solar (Holy Paladin 65, Holy Priest 257)
+  if specId == 65 or specId == 257 then
+    return "solar_orb"
+  end
+
+  -- Warlock (all specs) -> Void
+  if class == "WARLOCK" then
+    return "void_orb"
+  end
+
+  -- Fallback: keep previous default
+  return "void_orb"
+end
+
 local function NormalizePresetKey(presetKey)
   -- Keep preset resolution consistent with the options UI.
   if not presetKey or presetKey == "" or presetKey == "default" then
-    return "void_orb"
+    return GetDefaultOrbPresetForClass()
   end
   return presetKey
 end
