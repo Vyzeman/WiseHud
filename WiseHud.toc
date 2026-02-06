@@ -2,7 +2,7 @@
 ## Title: WiseHud
 ## Notes: Customizable HUD displaying health, power, and combo point orbs with smooth animations.
 ## Author: Wiseman
-## Version: 1.0.2
+## Version: 1.0.3
 ## SavedVariablesPerCharacter: WiseHudDB
 ## OptionalDeps: LibSharedMedia-3.0
 ## X-Category: Combat
