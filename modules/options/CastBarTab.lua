@@ -110,14 +110,10 @@ function CastBarTab:Create()
   
   -- Texture Section
   e.textureSection = Helpers.CreateSectionFrame(self.parent, "WiseHudCastTextureSection", "Texture Settings", 500, 80)
-  
-  -- Position title above section
-  if e.textureSection.titleText then
-    e.textureSection.titleText:SetPoint("TOPLEFT", self.parent, "TOPLEFT", 20, yOffset)
-    yOffset = yOffset - 28 -- Space for title
-  end
-  
-  e.textureSection:SetPoint("TOPLEFT", self.parent, "TOPLEFT", 20, yOffset)
+  yOffset = Helpers.AnchorSectionWithTitle(self.parent, e.textureSection, yOffset, {
+    contentHeight = 80,
+    spacingBelow = 20,
+  })
   
   local textureLabel = e.textureSection:CreateFontString(nil, "ARTWORK", "GameFontNormal")
   textureLabel:SetPoint("TOPLEFT", e.textureSection, "TOPLEFT", Helpers.SECTION_PADDING_LEFT, -Helpers.SECTION_PADDING_TOP)
@@ -240,19 +236,13 @@ function CastBarTab:Create()
   
   self.RefreshTextureDropdown()
   
-  yOffset = yOffset - 100
-  
   -- Cast Bar Position Section
   local castLayout = WiseHudDB.castLayout
   e.positionSection = Helpers.CreateSectionFrame(self.parent, "WiseHudCastPositionSection", "Cast Bar Position", 500, 320)
-  
-  -- Position title above section
-  if e.positionSection.titleText then
-    e.positionSection.titleText:SetPoint("TOPLEFT", self.parent, "TOPLEFT", 20, yOffset)
-    yOffset = yOffset - 28 -- Space for title
-  end
-  
-  e.positionSection:SetPoint("TOPLEFT", self.parent, "TOPLEFT", 20, yOffset)
+  yOffset = Helpers.AnchorSectionWithTitle(self.parent, e.positionSection, yOffset, {
+    contentHeight = 320,
+    spacingBelow = 20,
+  })
   
   -- Cast Bar Width
   e.widthSlider = Helpers.CreateSlider(e.positionSection, "WiseHudCastWidthSlider", "Cast Width", 100, 400, 5, castLayout.width or CAST_DEFAULTS.width, nil, function(self, value)
@@ -307,20 +297,14 @@ function CastBarTab:Create()
     if WiseHudCast_ApplyLayout then WiseHudCast_ApplyLayout() end
   end)
   e.showTextCheck:SetPoint("TOPLEFT", e.ySlider, "BOTTOMLEFT", 0, -20)
-  
-  -- Calculate yOffset for next section: position section height (320) + title space (28) + padding
-  yOffset = yOffset - 320 - 20 -- Section height + extra padding
-  
+
   -- Color Section
   e.colorSection = Helpers.CreateSectionFrame(self.parent, "WiseHudCastColorSection", "Color Settings", 500, 150)
-  
-  -- Position title above section
-  if e.colorSection.titleText then
-    e.colorSection.titleText:SetPoint("TOPLEFT", self.parent, "TOPLEFT", 20, yOffset)
-    yOffset = yOffset - 28 -- Space for title
-  end
-  
-  e.colorSection:SetPoint("TOPLEFT", self.parent, "TOPLEFT", 20, yOffset)
+  yOffset = Helpers.AnchorSectionWithTitle(self.parent, e.colorSection, yOffset, {
+    contentHeight = 180,
+    -- Use a small extra spacing so the reset button sitzt näher an der Section.
+    spacingBelow = 0,
+  })
   
   -- Fill Color Settings
   local fillColorLabel = e.colorSection:CreateFontString(nil, "ARTWORK", "GameFontNormal")
@@ -413,10 +397,6 @@ function CastBarTab:Create()
   e.bgColorButton:SetPoint("TOPLEFT", bgColorLabel, "BOTTOMLEFT", 0, -8)
   self.UpdateBgColorSwatch()
   
-  -- Calculate yOffset for reset button: color section bottom + padding
-  -- Use etwas geringeres Bottom-Padding, analog zum Orb-Tab (ca. 20px)
-  yOffset = yOffset - 180 - 20 -- Section height + padding
-  
   -- Reset Button (positioned at the end of content)
   e.resetButton = Helpers.CreateResetButton(
     self.parent,
@@ -428,7 +408,7 @@ function CastBarTab:Create()
     self.parent,
     "TOPLEFT",
     20,
-    yOffset
+    yOffset + 10
   )
 end
 
@@ -448,64 +428,11 @@ function CastBarTab:Refresh()
   local castCfg = WiseHudDB.castLayout
   local e = self.elements
   
-  -- Helper function to refresh a slider with a value from config
-  local function RefreshSlider(sliderContainer, configValue, defaultValue)
-    if not sliderContainer or not sliderContainer.slider then return end
-    
-    local value = configValue
-    if value == nil then
-      value = defaultValue
-    end
-    
-    -- Ensure value is a number
-    value = tonumber(value)
-    if not value then return end
-    
-    -- Expand range if needed
-    if sliderContainer.ExpandSliderRange then
-      sliderContainer.ExpandSliderRange(value)
-    end
-    
-    -- Update slider range if it was expanded
-    if sliderContainer.currentMin and sliderContainer.currentMax then
-      sliderContainer.slider:SetMinMaxValues(sliderContainer.currentMin, sliderContainer.currentMax)
-      local sliderName = sliderContainer.slider:GetName()
-      if _G[sliderName .. "Low"] then
-        _G[sliderName .. "Low"]:SetText(tostring(sliderContainer.currentMin))
-      end
-      if _G[sliderName .. "High"] then
-        _G[sliderName .. "High"]:SetText(tostring(sliderContainer.currentMax))
-      end
-    end
-    
-    -- Round value to step
-    local step = sliderContainer.step or 1
-    local roundedValue
-    if step < 1 then
-      roundedValue = math.floor(value / step + 0.5) * step
-    else
-      roundedValue = math.floor(value + 0.5)
-    end
-    
-    -- Ensure value is within range
-    local minVal = sliderContainer.currentMin or sliderContainer.initialMin
-    local maxVal = sliderContainer.currentMax or sliderContainer.initialMax
-    roundedValue = math.max(minVal, math.min(maxVal, roundedValue))
-    
-    -- Set slider value
-    sliderContainer.slider:SetValue(roundedValue)
-    
-    -- Update display
-    if sliderContainer.UpdateDisplay then
-      sliderContainer.UpdateDisplay(roundedValue)
-    end
-  end
-  
-  -- Refresh all sliders with their config values
-  RefreshSlider(e.widthSlider, castCfg.width, CAST_DEFAULTS.width)
-  RefreshSlider(e.heightSlider, castCfg.height, CAST_DEFAULTS.height)
-  RefreshSlider(e.xSlider, castCfg.offsetX, CAST_DEFAULTS.offsetX)
-  RefreshSlider(e.ySlider, castCfg.offsetY, CAST_DEFAULTS.offsetY)
+  -- Refresh all sliders with their config values using the shared helper
+  Helpers.RefreshSliderFromConfig(e.widthSlider, castCfg.width, CAST_DEFAULTS.width)
+  Helpers.RefreshSliderFromConfig(e.heightSlider, castCfg.height, CAST_DEFAULTS.height)
+  Helpers.RefreshSliderFromConfig(e.xSlider, castCfg.offsetX, CAST_DEFAULTS.offsetX)
+  Helpers.RefreshSliderFromConfig(e.ySlider, castCfg.offsetY, CAST_DEFAULTS.offsetY)
   
   -- Update checkboxes
   if e.enabledCheckbox then

@@ -50,14 +50,10 @@ function OrbResourceTab:Create()
   -- Height slightly oversized so all controls (X/Y, Radius, Layout) stay well inside
   -- without needing pixel-perfect manual tuning.
   e.positionSection = Helpers.CreateSectionFrame(self.parent, "WiseHudOrbsPositionSection", "Position Settings", 500, 280)
-  
-  -- Position title above section
-  if e.positionSection.titleText then
-    e.positionSection.titleText:SetPoint("TOPLEFT", self.parent, "TOPLEFT", 20, yOffset)
-    yOffset = yOffset - 28 -- Space for title
-  end
-  
-  e.positionSection:SetPoint("TOPLEFT", self.parent, "TOPLEFT", 20, yOffset)
+  yOffset = Helpers.AnchorSectionWithTitle(self.parent, e.positionSection, yOffset, {
+    contentHeight = 280,
+    spacingBelow = 20,
+  })
   
   -- Layout type dropdown (circular / horizontal / vertical) – placed at top of section
   local function GetCurrentLayoutType()
@@ -147,21 +143,17 @@ function OrbResourceTab:Create()
   end
   
   -- Calculate yOffset for next section: position section height (280) + title space (28) + padding
-  yOffset = yOffset - 280 - 20 -- Section height + extra padding
+  -- (already handled by AnchorSectionWithTitle above)
 
   -- Alpha settings for Orbs (independent of Health/Power),
   -- placed directly below the position controls.
   local alphaCfg = Helpers.ensureComboTable()
   -- Slightly increase height so all three alpha sliders have a bit more vertical space
   e.alphaSection = Helpers.CreateSectionFrame(self.parent, "WiseHudOrbsAlphaSection", "Alpha Settings", 500, 210)
-  
-  -- Position title above section
-  if e.alphaSection.titleText then
-    e.alphaSection.titleText:SetPoint("TOPLEFT", self.parent, "TOPLEFT", 20, yOffset)
-    yOffset = yOffset - 28 -- Space for title
-  end
-  
-  e.alphaSection:SetPoint("TOPLEFT", self.parent, "TOPLEFT", 20, yOffset)
+  yOffset = Helpers.AnchorSectionWithTitle(self.parent, e.alphaSection, yOffset, {
+    contentHeight = 210,
+    spacingBelow = 20,
+  })
 
   local defaultsAlpha = ORB_DEFAULTS.alpha or {}
 
@@ -226,18 +218,14 @@ function OrbResourceTab:Create()
   e.fullIdleAlphaSlider:SetPoint("TOPLEFT", e.nonFullAlphaSlider, "BOTTOMLEFT", 0, -20)
 
   -- Calculate yOffset for next section: alpha section height (210) + title space (28) + padding
-  yOffset = yOffset - 210 - 20 -- Section height + extra padding
+  -- (already handled by AnchorSectionWithTitle above)
   
   -- Model Settings Section (with presets + optional custom settings) – now below position and alpha settings
   e.modelSection = Helpers.CreateSectionFrame(self.parent, "WiseHudOrbsModelSection", "Model Settings", 500, 120)
-  
-  -- Position title above section
-  if e.modelSection.titleText then
-    e.modelSection.titleText:SetPoint("TOPLEFT", self.parent, "TOPLEFT", 20, yOffset)
-    yOffset = yOffset - 28 -- Space for title
-  end
-  
-  e.modelSection:SetPoint("TOPLEFT", self.parent, "TOPLEFT", 20, yOffset)
+  yOffset = Helpers.AnchorSectionWithTitle(self.parent, e.modelSection, yOffset, {
+    contentHeight = 120,
+    spacingBelow = 20,
+  })
   
   local function GetDefaultModelId()
     if WiseHudOrbs_GetDefaultModelId then
@@ -577,18 +565,14 @@ function OrbResourceTab:Create()
   end
   
   -- Calculate yOffset for next section: model section height (120) + title space (28) + padding
-  yOffset = yOffset - 120 - 20 -- Section height + extra padding
+  -- (already handled by AnchorSectionWithTitle above)
   
   -- Camera Position Section (below presets)
   e.cameraSection = Helpers.CreateSectionFrame(self.parent, "WiseHudOrbsCameraSection", "Camera Position", 500, 210)
-  
-  -- Position title above section
-  if e.cameraSection.titleText then
-    e.cameraSection.titleText:SetPoint("TOPLEFT", self.parent, "TOPLEFT", 20, yOffset)
-    yOffset = yOffset - 28 -- Space for title
-  end
-  
-  e.cameraSection:SetPoint("TOPLEFT", self.parent, "TOPLEFT", 20, yOffset)
+  yOffset = Helpers.AnchorSectionWithTitle(self.parent, e.cameraSection, yOffset, {
+    contentHeight = 210,
+    spacingBelow = 20,
+  })
   
   -- Camera X Position
   e.cameraXSlider = Helpers.CreateSlider(e.cameraSection, "WiseHudOrbsCameraXSlider", "Camera X", -3.0, 0.0, 0.1, comboCfg.cameraX or ORB_DEFAULTS.cameraX, "%.1f", function(self, value)
@@ -630,7 +614,7 @@ function OrbResourceTab:Create()
   
   -- Calculate yOffset for reset button: camera section bottom + padding.
   -- Move the reset button 10px nach oben, damit er im sichtbaren Bereich bleibt.
-  yOffset = yOffset - 200 - 30 -- Section height + padding
+  -- (already handled by AnchorSectionWithTitle above)
   
   -- Reset Button (positioned at the end of content)
   e.resetButton = Helpers.CreateResetButton(

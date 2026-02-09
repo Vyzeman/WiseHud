@@ -539,6 +539,46 @@ local function CreateSectionFrame(parent, name, title, width, height)
   return section
 end
 
+-- Convenience helper to position a titled section and advance the running yOffset.
+-- This keeps vertical spacing between sections consistent across tabs.
+--
+-- Parameters:
+-- parent       - the parent frame the section is anchored to
+-- section      - the section frame returned by CreateSectionFrame
+-- yOffset      - current running y offset (negative number growing downward)
+-- options      - optional table:
+--   - leftOffset     (default 20)  : x-offset from parent's left edge
+--   - titleSpacing   (default 28)  : vertical space reserved for the title
+--   - spacingBelow   (default 20)  : extra space below the section before next content
+--   - contentHeight  (default section:GetHeight()) : logical height used to advance yOffset
+--
+-- Returns:
+--   new yOffset after placing the title + section + spacing below.
+local function AnchorSectionWithTitle(parent, section, yOffset, options)
+  if not section or not parent or not yOffset then
+    return yOffset
+  end
+
+  options = options or {}
+  local leftOffset = options.leftOffset or 20
+  local titleSpacing = options.titleSpacing or 28
+  local spacingBelow = options.spacingBelow or 20
+  local contentHeight = options.contentHeight or (section.GetHeight and section:GetHeight()) or 0
+
+  -- Position title just above the section
+  if section.titleText then
+    section.titleText:SetPoint("TOPLEFT", parent, "TOPLEFT", leftOffset, yOffset)
+    yOffset = yOffset - titleSpacing
+  end
+
+  -- Anchor the section itself
+  section:SetPoint("TOPLEFT", parent, "TOPLEFT", leftOffset, yOffset)
+
+  -- Advance yOffset by the section's logical height plus desired spacing below
+  yOffset = yOffset - contentHeight - spacingBelow
+  return yOffset
+end
+
 local function CreateColorPicker(parent, name, label, getColorFunc, setColorFunc, updateSwatchFunc, hasAlpha)
   local colorButton = CreateFrame("Button", name, parent, "UIPanelButtonTemplate")
   colorButton:SetSize(140, 32)
@@ -799,6 +839,7 @@ WiseHudOptionsHelpers = {
   CreateCheckbox = CreateCheckbox,
   CreateColorPicker = CreateColorPicker,
   CreateSectionFrame = CreateSectionFrame,
+  AnchorSectionWithTitle = AnchorSectionWithTitle,
   CheckLSMAvailability = CheckLSMAvailability,
   CreateResetButton = CreateResetButton,
   -- Shared helper to refresh a slider container from config + defaults

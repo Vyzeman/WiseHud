@@ -51,14 +51,10 @@ function HealthPowerTab:Create()
   -- Layout Section
   local layout = Helpers.ensureLayoutTable()
   e.layoutSection = Helpers.CreateSectionFrame(self.parent, "WiseHudHealthPowerLayoutSection", "Position Settings", 500, 280)
-  
-  -- Position title above section
-  if e.layoutSection.titleText then
-    e.layoutSection.titleText:SetPoint("TOPLEFT", self.parent, "TOPLEFT", 20, yOffset)
-    yOffset = yOffset - 28 -- Space for title
-  end
-  
-  e.layoutSection:SetPoint("TOPLEFT", self.parent, "TOPLEFT", 20, yOffset)
+  yOffset = Helpers.AnchorSectionWithTitle(self.parent, e.layoutSection, yOffset, {
+    contentHeight = 280,
+    spacingBelow = 20,
+  })
   
   -- Width
   e.widthSlider = Helpers.CreateSlider(e.layoutSection, "WiseHudBarWidthSlider", "Width", 120, 400, 5, layout.width or HP_DEFAULTS.layout.width, nil, function(self, value)
@@ -95,21 +91,15 @@ function HealthPowerTab:Create()
     if WiseHudPower_ApplyLayout then WiseHudPower_ApplyLayout() end
   end)
   e.offsetYSlider:SetPoint("TOPLEFT", e.offsetSlider, "BOTTOMLEFT", 0, -20)
-  
-  -- Calculate yOffset for next section: layout section height (280) + title space (28) + padding
-  yOffset = yOffset - 280 - 20 -- Section height + extra padding
-  
+
   -- Alpha settings
   local alphaCfg = Helpers.ensureAlphaTable()
   e.alphaSection = Helpers.CreateSectionFrame(self.parent, "WiseHudHealthPowerAlphaSection", "Alpha Settings", 500, 210)
-  
-  -- Position title above section
-  if e.alphaSection.titleText then
-    e.alphaSection.titleText:SetPoint("TOPLEFT", self.parent, "TOPLEFT", 20, yOffset)
-    yOffset = yOffset - 28 -- Space for title
-  end
-  
-  e.alphaSection:SetPoint("TOPLEFT", self.parent, "TOPLEFT", 20, yOffset)
+  yOffset = Helpers.AnchorSectionWithTitle(self.parent, e.alphaSection, yOffset, {
+    contentHeight = 210,
+    -- Alpha section previously used slightly less spacing below (210 + 10).
+    spacingBelow = 10,
+  })
   
   -- Combat Alpha
   e.combatAlphaSlider = Helpers.CreateSlider(e.alphaSection, "WiseHudCombatAlphaSlider", "Combat Alpha", 0, 100, 5, alphaCfg.combatAlpha or HP_DEFAULTS.alpha.combat, "%d%%", function(self, value)
@@ -137,19 +127,13 @@ function HealthPowerTab:Create()
     if WiseHudPower_ApplyAlpha then WiseHudPower_ApplyAlpha() end
   end)
   e.fullIdleAlphaSlider:SetPoint("TOPLEFT", e.nonFullAlphaSlider, "BOTTOMLEFT", 0, -20)
-  
-  yOffset = yOffset - 220
-  
+
   -- Color Section
   e.colorSection = Helpers.CreateSectionFrame(self.parent, "WiseHudHealthPowerColorSection", "Color Settings", 500, 150)
-  
-  -- Position title above section
-  if e.colorSection.titleText then
-    e.colorSection.titleText:SetPoint("TOPLEFT", self.parent, "TOPLEFT", 20, yOffset)
-    yOffset = yOffset - 28 -- Space for title
-  end
-  
-  e.colorSection:SetPoint("TOPLEFT", self.parent, "TOPLEFT", 20, yOffset)
+  yOffset = Helpers.AnchorSectionWithTitle(self.parent, e.colorSection, yOffset, {
+    contentHeight = 150,
+    spacingBelow = 20,
+  })
   
   -- Health Bar Color
   local healthColorLabel = e.colorSection:CreateFontString(nil, "ARTWORK", "GameFontNormal")
@@ -231,7 +215,7 @@ function HealthPowerTab:Create()
   
   -- Calculate yOffset for reset button: color section bottom + padding
   -- Use etwas geringeres Bottom-Padding, analog zum Orb-Tab (ca. 20px)
-  yOffset = yOffset - 150 - 20 -- Section height + padding
+  -- (already handled by AnchorSectionWithTitle above)
   
   -- Reset Button (positioned at the end of content)
   e.resetButton = Helpers.CreateResetButton(
