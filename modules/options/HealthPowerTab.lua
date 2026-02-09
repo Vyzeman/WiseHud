@@ -33,7 +33,8 @@ function HealthPowerTab:Create()
       WiseHudHealth_SetEnabled(checked)
     end
   end)
-  e.healthEnabledCheckbox:SetPoint("TOPLEFT", e.enableSection, "TOPLEFT", 12, -12)
+  -- Use standard section padding for inner content
+  e.healthEnabledCheckbox:SetPoint("TOPLEFT", e.enableSection, "TOPLEFT", Helpers.SECTION_PADDING_LEFT, -Helpers.SECTION_PADDING_TOP)
   
   -- Power enable/disable checkbox
   e.powerEnabledCheckbox = Helpers.CreateCheckbox(e.enableSection, "WiseHudPowerEnabledCheckbox", "Enable Power", healthCfg.powerEnabled, function(self, checked)
@@ -49,7 +50,7 @@ function HealthPowerTab:Create()
   
   -- Layout Section
   local layout = Helpers.ensureLayoutTable()
-  e.layoutSection = Helpers.CreateSectionFrame(self.parent, "WiseHudHealthPowerLayoutSection", "Position", 500, 280)
+  e.layoutSection = Helpers.CreateSectionFrame(self.parent, "WiseHudHealthPowerLayoutSection", "Position Settings", 500, 280)
   
   -- Position title above section
   if e.layoutSection.titleText then
@@ -66,7 +67,7 @@ function HealthPowerTab:Create()
     if WiseHudHealth_ApplyLayout then WiseHudHealth_ApplyLayout() end
     if WiseHudPower_ApplyLayout then WiseHudPower_ApplyLayout() end
   end)
-  e.widthSlider:SetPoint("TOPLEFT", e.layoutSection, "TOPLEFT", 12, -12)
+  e.widthSlider:SetPoint("TOPLEFT", e.layoutSection, "TOPLEFT", Helpers.SECTION_PADDING_LEFT, -Helpers.SECTION_PADDING_TOP)
   
   -- Height
   e.heightSlider = Helpers.CreateSlider(e.layoutSection, "WiseHudBarHeightSlider", "Height", 330, 500, 5, layout.height or HP_DEFAULTS.layout.height, nil, function(self, value)
@@ -100,7 +101,7 @@ function HealthPowerTab:Create()
   
   -- Alpha settings
   local alphaCfg = Helpers.ensureAlphaTable()
-  e.alphaSection = Helpers.CreateSectionFrame(self.parent, "WiseHudHealthPowerAlphaSection", "Alpha Settings", 500, 200)
+  e.alphaSection = Helpers.CreateSectionFrame(self.parent, "WiseHudHealthPowerAlphaSection", "Alpha Settings", 500, 210)
   
   -- Position title above section
   if e.alphaSection.titleText then
@@ -117,7 +118,7 @@ function HealthPowerTab:Create()
     if WiseHudHealth_ApplyAlpha then WiseHudHealth_ApplyAlpha() end
     if WiseHudPower_ApplyAlpha then WiseHudPower_ApplyAlpha() end
   end)
-  e.combatAlphaSlider:SetPoint("TOPLEFT", e.alphaSection, "TOPLEFT", 12, -12)
+  e.combatAlphaSlider:SetPoint("TOPLEFT", e.alphaSection, "TOPLEFT", Helpers.SECTION_PADDING_LEFT, -Helpers.SECTION_PADDING_TOP)
   
   -- Out of combat (while recently changed)
   e.nonFullAlphaSlider = Helpers.CreateSlider(e.alphaSection, "WiseHudNonFullAlphaSlider", "Out of Combat Alpha", 0, 100, 5, alphaCfg.nonFullAlpha or HP_DEFAULTS.alpha.nonFull, "%d%%", function(self, value)
@@ -140,7 +141,7 @@ function HealthPowerTab:Create()
   yOffset = yOffset - 220
   
   -- Color Section
-  e.colorSection = Helpers.CreateSectionFrame(self.parent, "WiseHudHealthPowerColorSection", "Color Settings", 500, 160)
+  e.colorSection = Helpers.CreateSectionFrame(self.parent, "WiseHudHealthPowerColorSection", "Color Settings", 500, 150)
   
   -- Position title above section
   if e.colorSection.titleText then
@@ -152,7 +153,7 @@ function HealthPowerTab:Create()
   
   -- Health Bar Color
   local healthColorLabel = e.colorSection:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-  healthColorLabel:SetPoint("TOPLEFT", e.colorSection, "TOPLEFT", 12, -12)
+  healthColorLabel:SetPoint("TOPLEFT", e.colorSection, "TOPLEFT", Helpers.SECTION_PADDING_LEFT, -Helpers.SECTION_PADDING_TOP)
   healthColorLabel:SetText("Health Bar Color:")
   healthColorLabel:SetTextColor(1, 1, 1)
   
@@ -229,7 +230,8 @@ function HealthPowerTab:Create()
   self.UpdatePowerColorSwatch()
   
   -- Calculate yOffset for reset button: color section bottom + padding
-  yOffset = yOffset - 160 - 40 -- Section height + padding
+  -- Use etwas geringeres Bottom-Padding, analog zum Orb-Tab (ca. 20px)
+  yOffset = yOffset - 150 - 20 -- Section height + padding
   
   -- Reset Button (positioned at the end of content)
   e.resetButton = Helpers.CreateResetButton(
@@ -255,67 +257,14 @@ function HealthPowerTab:Refresh()
   local alphaCfg = Helpers.ensureAlphaTable()
   local e = self.elements
   
-  -- Helper function to refresh a slider with a value from config
-  local function RefreshSlider(sliderContainer, configValue, defaultValue)
-    if not sliderContainer or not sliderContainer.slider then return end
-    
-    local value = configValue
-    if value == nil then
-      value = defaultValue
-    end
-    
-    -- Ensure value is a number
-    value = tonumber(value)
-    if not value then return end
-    
-    -- Expand range if needed
-    if sliderContainer.ExpandSliderRange then
-      sliderContainer.ExpandSliderRange(value)
-    end
-    
-    -- Update slider range if it was expanded
-    if sliderContainer.currentMin and sliderContainer.currentMax then
-      sliderContainer.slider:SetMinMaxValues(sliderContainer.currentMin, sliderContainer.currentMax)
-      local sliderName = sliderContainer.slider:GetName()
-      if _G[sliderName .. "Low"] then
-        _G[sliderName .. "Low"]:SetText(tostring(sliderContainer.currentMin))
-      end
-      if _G[sliderName .. "High"] then
-        _G[sliderName .. "High"]:SetText(tostring(sliderContainer.currentMax))
-      end
-    end
-    
-    -- Round value to step
-    local step = sliderContainer.step or 1
-    local roundedValue
-    if step < 1 then
-      roundedValue = math.floor(value / step + 0.5) * step
-    else
-      roundedValue = math.floor(value + 0.5)
-    end
-    
-    -- Ensure value is within range
-    local minVal = sliderContainer.currentMin or sliderContainer.initialMin
-    local maxVal = sliderContainer.currentMax or sliderContainer.initialMax
-    roundedValue = math.max(minVal, math.min(maxVal, roundedValue))
-    
-    -- Set slider value
-    sliderContainer.slider:SetValue(roundedValue)
-    
-    -- Update display
-    if sliderContainer.UpdateDisplay then
-      sliderContainer.UpdateDisplay(roundedValue)
-    end
-  end
-  
   -- Refresh all sliders with their config values
-  RefreshSlider(e.widthSlider, healthCfg.width, HP_DEFAULTS.layout.width)
-  RefreshSlider(e.heightSlider, healthCfg.height, HP_DEFAULTS.layout.height)
-  RefreshSlider(e.offsetSlider, healthCfg.offset, HP_DEFAULTS.layout.offsetX)
-  RefreshSlider(e.offsetYSlider, healthCfg.offsetY, HP_DEFAULTS.layout.offsetY)
-  RefreshSlider(e.combatAlphaSlider, alphaCfg.combatAlpha, HP_DEFAULTS.alpha.combat)
-  RefreshSlider(e.nonFullAlphaSlider, alphaCfg.nonFullAlpha, HP_DEFAULTS.alpha.nonFull)
-  RefreshSlider(e.fullIdleAlphaSlider, alphaCfg.fullIdleAlpha, HP_DEFAULTS.alpha.fullIdle)
+  Helpers.RefreshSliderFromConfig(e.widthSlider, healthCfg.width, HP_DEFAULTS.layout.width)
+  Helpers.RefreshSliderFromConfig(e.heightSlider, healthCfg.height, HP_DEFAULTS.layout.height)
+  Helpers.RefreshSliderFromConfig(e.offsetSlider, healthCfg.offset, HP_DEFAULTS.layout.offsetX)
+  Helpers.RefreshSliderFromConfig(e.offsetYSlider, healthCfg.offsetY, HP_DEFAULTS.layout.offsetY)
+  Helpers.RefreshSliderFromConfig(e.combatAlphaSlider, alphaCfg.combatAlpha, HP_DEFAULTS.alpha.combat)
+  Helpers.RefreshSliderFromConfig(e.nonFullAlphaSlider, alphaCfg.nonFullAlpha, HP_DEFAULTS.alpha.nonFull)
+  Helpers.RefreshSliderFromConfig(e.fullIdleAlphaSlider, alphaCfg.fullIdleAlpha, HP_DEFAULTS.alpha.fullIdle)
   
   -- Update checkboxes
   if e.healthEnabledCheckbox then

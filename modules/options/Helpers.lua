@@ -21,6 +21,12 @@ local function ensureComboTable()
   return WiseHudDB.comboSettings
 end
 
+-- Standard padding for option section contents
+local SECTION_PADDING_LEFT = 12
+local SECTION_PADDING_RIGHT = 12
+local SECTION_PADDING_TOP = 12
+local SECTION_PADDING_BOTTOM = 12
+
 -- UI Element Helper Functions
 
 local function CreateSlider(parent, name, label, minVal, maxVal, step, defaultValue, textFormat, onChangeCallback)
@@ -476,6 +482,12 @@ local function CreateSectionFrame(parent, name, title, width, height)
   local section = CreateFrame("Frame", name, parent)
   section:SetSize(width or 500, height or 100)
   
+  -- Expose standard inner padding so sections can place their first child consistently
+  section.paddingLeft = SECTION_PADDING_LEFT
+  section.paddingRight = SECTION_PADDING_RIGHT
+  section.paddingTop = SECTION_PADDING_TOP
+  section.paddingBottom = SECTION_PADDING_BOTTOM
+  
   -- Title (created outside/above the section frame so it's not hidden behind borders)
   local titleText = nil
   if title then
@@ -689,8 +701,54 @@ end
 -- Create a reset button with confirmation dialog
 local function CreateResetButton(parent, buttonName, dialogName, dialogText, tabInstance, anchorPoint, anchorTo, relativePoint, xOffset, yOffset)
   local resetButton = CreateFrame("Button", buttonName, parent, "UIPanelButtonTemplate")
-  resetButton:SetSize(120, 28)
+  -- Compact link-style button: only text, no visible frame
+  resetButton:SetSize(140, 20)
   resetButton:SetText("Reset to Default")
+
+  -- Remove panel button art and rely purely on text hover.
+  -- We can't pass nil into Set*Texture safely, so hide the existing textures instead.
+  local normalTexObj = resetButton:GetNormalTexture()
+  if normalTexObj then
+    normalTexObj:SetTexture("Interface\\Buttons\\WHITE8x8")
+    normalTexObj:SetVertexColor(0, 0, 0, 0) -- fully transparent
+  end
+  local pushedTexObj = resetButton:GetPushedTexture()
+  if pushedTexObj then
+    pushedTexObj:SetTexture("Interface\\Buttons\\WHITE8x8")
+    pushedTexObj:SetVertexColor(0, 0, 0, 0)
+  end
+  local highlightTexObj = resetButton:GetHighlightTexture()
+  if highlightTexObj then
+    highlightTexObj:SetTexture("Interface\\Buttons\\WHITE8x8")
+    highlightTexObj:SetVertexColor(0, 0, 0, 0)
+  end
+
+  -- Use small neutral fonts
+  resetButton:SetNormalFontObject("GameFontNormalSmall")
+  resetButton:SetHighlightFontObject("GameFontHighlightSmall")
+  resetButton:SetDisabledFontObject("GameFontDisableSmall")
+
+  local fs = resetButton:GetFontString()
+  local normalR, normalG, normalB = 0.8, 0.8, 0.8
+  local hoverR, hoverG, hoverB = 1.0, 0.82, 0.0 -- same gold as section titles
+  if fs then
+    fs:ClearAllPoints()
+    fs:SetPoint("CENTER", resetButton, "CENTER", 0, 0)
+    fs:SetTextColor(normalR, normalG, normalB, 1)
+  end
+
+  resetButton:HookScript("OnEnter", function(self)
+    local fontString = self:GetFontString()
+    if fontString and self:IsEnabled() then
+      fontString:SetTextColor(hoverR, hoverG, hoverB, 1)
+    end
+  end)
+  resetButton:HookScript("OnLeave", function(self)
+    local fontString = self:GetFontString()
+    if fontString and self:IsEnabled() then
+      fontString:SetTextColor(normalR, normalG, normalB, 1)
+    end
+  end)
   
   -- Default to bottom right if no anchor point specified
   anchorPoint = anchorPoint or "BOTTOMRIGHT"
@@ -732,10 +790,67 @@ WiseHudOptionsHelpers = {
   ensureLayoutTable = ensureLayoutTable,
   ensureAlphaTable = ensureAlphaTable,
   ensureComboTable = ensureComboTable,
+  -- Expose standard section padding so all tabs can use consistent offsets
+  SECTION_PADDING_LEFT = SECTION_PADDING_LEFT,
+  SECTION_PADDING_RIGHT = SECTION_PADDING_RIGHT,
+  SECTION_PADDING_TOP = SECTION_PADDING_TOP,
+  SECTION_PADDING_BOTTOM = SECTION_PADDING_BOTTOM,
   CreateSlider = CreateSlider,
   CreateCheckbox = CreateCheckbox,
   CreateColorPicker = CreateColorPicker,
   CreateSectionFrame = CreateSectionFrame,
   CheckLSMAvailability = CheckLSMAvailability,
   CreateResetButton = CreateResetButton,
+  -- Shared helper to refresh a slider container from config + defaults
+  RefreshSliderFromConfig = function(sliderContainer, configValue, defaultValue)
+    if not sliderContainer or not sliderContainer.slider then return end
+
+    local value = configValue
+    if value == nil then
+      value = defaultValue
+    end
+
+    value = tonumber(value)
+    if not value then return end
+
+    -- Expand range if needed
+    if sliderContainer.ExpandSliderRange then
+      sliderContainer.ExpandSliderRange(value)
+    end
+
+    -- Update slider range if it was expanded
+    if sliderContainer.currentMin and sliderContainer.currentMax then
+      local slider = sliderContainer.slider
+      slider:SetMinMaxValues(sliderContainer.currentMin, sliderContainer.currentMax)
+      local sliderName = slider:GetName()
+      if _G[sliderName .. "Low"] then
+        _G[sliderName .. "Low"]:SetText(tostring(sliderContainer.currentMin))
+      end
+      if _G[sliderName .. "High"] then
+        _G[sliderName .. "High"]:SetText(tostring(sliderContainer.currentMax))
+      end
+    end
+
+    -- Round value to step
+    local step = sliderContainer.step or 1
+    local roundedValue
+    if step < 1 then
+      roundedValue = math.floor(value / step + 0.5) * step
+    else
+      roundedValue = math.floor(value + 0.5)
+    end
+
+    -- Ensure value is within range
+    local minVal = sliderContainer.currentMin or sliderContainer.initialMin
+    local maxVal = sliderContainer.currentMax or sliderContainer.initialMax
+    roundedValue = math.max(minVal, math.min(maxVal, roundedValue))
+
+    -- Set slider value
+    sliderContainer.slider:SetValue(roundedValue)
+
+    -- Update display
+    if sliderContainer.UpdateDisplay then
+      sliderContainer.UpdateDisplay(roundedValue)
+    end
+  end,
 }

@@ -89,7 +89,7 @@ function CastBarTab:Create()
   local yOffset = -20
   
   -- Enable/Disable Section
-  e.enableSection = Helpers.CreateSectionFrame(self.parent, "WiseHudCastEnableSection", nil, 500, 60)
+  e.enableSection = Helpers.CreateSectionFrame(self.parent, "WiseHudCastEnableSection", nil, 500, 50)
   e.enableSection:SetPoint("TOPLEFT", self.parent, "TOPLEFT", 20, yOffset)
   
   -- Cast enable/disable checkbox
@@ -102,9 +102,11 @@ function CastBarTab:Create()
       WiseHudCast_SetEnabled(checked)
     end
   end)
-  e.enabledCheckbox:SetPoint("TOPLEFT", e.enableSection, "TOPLEFT", 12, -12)
+  -- Use standard section padding for inner content
+  e.enabledCheckbox:SetPoint("TOPLEFT", e.enableSection, "TOPLEFT", Helpers.SECTION_PADDING_LEFT, -Helpers.SECTION_PADDING_TOP)
   
-  yOffset = yOffset - 80
+  -- Spacing below enable section (section height 50 + etwas weniger Padding)
+  yOffset = yOffset - 70
   
   -- Texture Section
   e.textureSection = Helpers.CreateSectionFrame(self.parent, "WiseHudCastTextureSection", "Texture Settings", 500, 80)
@@ -118,7 +120,7 @@ function CastBarTab:Create()
   e.textureSection:SetPoint("TOPLEFT", self.parent, "TOPLEFT", 20, yOffset)
   
   local textureLabel = e.textureSection:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-  textureLabel:SetPoint("TOPLEFT", e.textureSection, "TOPLEFT", 12, -12)
+  textureLabel:SetPoint("TOPLEFT", e.textureSection, "TOPLEFT", Helpers.SECTION_PADDING_LEFT, -Helpers.SECTION_PADDING_TOP)
   textureLabel:SetText("Texture:")
   textureLabel:SetTextColor(1, 1, 1)
   
@@ -260,7 +262,7 @@ function CastBarTab:Create()
     cfg.width = value
     if WiseHudCast_ApplyLayout then WiseHudCast_ApplyLayout() end
   end)
-  e.widthSlider:SetPoint("TOPLEFT", e.positionSection, "TOPLEFT", 12, -12)
+  e.widthSlider:SetPoint("TOPLEFT", e.positionSection, "TOPLEFT", Helpers.SECTION_PADDING_LEFT, -Helpers.SECTION_PADDING_TOP)
   
   -- Cast Bar Height
   e.heightSlider = Helpers.CreateSlider(e.positionSection, "WiseHudCastHeightSlider", "Cast Height", 10, 50, 1, castLayout.height or CAST_DEFAULTS.height, nil, function(self, value)
@@ -310,7 +312,7 @@ function CastBarTab:Create()
   yOffset = yOffset - 320 - 20 -- Section height + extra padding
   
   -- Color Section
-  e.colorSection = Helpers.CreateSectionFrame(self.parent, "WiseHudCastColorSection", "Color Settings", 500, 180)
+  e.colorSection = Helpers.CreateSectionFrame(self.parent, "WiseHudCastColorSection", "Color Settings", 500, 150)
   
   -- Position title above section
   if e.colorSection.titleText then
@@ -322,7 +324,7 @@ function CastBarTab:Create()
   
   -- Fill Color Settings
   local fillColorLabel = e.colorSection:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-  fillColorLabel:SetPoint("TOPLEFT", e.colorSection, "TOPLEFT", 12, -12)
+  fillColorLabel:SetPoint("TOPLEFT", e.colorSection, "TOPLEFT", Helpers.SECTION_PADDING_LEFT, -Helpers.SECTION_PADDING_TOP)
   fillColorLabel:SetText("Fill Color:")
   fillColorLabel:SetTextColor(1, 1, 1)
   
@@ -412,7 +414,8 @@ function CastBarTab:Create()
   self.UpdateBgColorSwatch()
   
   -- Calculate yOffset for reset button: color section bottom + padding
-  yOffset = yOffset - 180 - 40 -- Section height + padding
+  -- Use etwas geringeres Bottom-Padding, analog zum Orb-Tab (ca. 20px)
+  yOffset = yOffset - 180 - 20 -- Section height + padding
   
   -- Reset Button (positioned at the end of content)
   e.resetButton = Helpers.CreateResetButton(

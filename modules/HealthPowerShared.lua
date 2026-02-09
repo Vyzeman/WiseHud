@@ -17,18 +17,6 @@ local DEFAULT_ALPHA_FULL_IDLE = (HP_DEFAULTS.alpha and HP_DEFAULTS.alpha.fullIdl
 
 local FADE_IDLE_DELAY = 5 -- Seconds since last change until full idle alpha
 
--- Helper: safely detect whether a numeric value can be used in arithmetic
--- (avoids errors like "attempt to perform arithmetic on ... (a secret value)").
-local function WiseHudHP_IsSafeNumber(v)
-  if type(v) ~= "number" then
-    return false
-  end
-  local ok = pcall(function()
-    local _ = v + 0 -- will error if v is a "secret" value
-  end)
-  return ok
-end
-
 -- Returns layout for the curved health/power bars (width, height, offsetX, offsetY)
 function WiseHudHP_GetBarLayout()
   local cfg = (WiseHudDB and WiseHudDB.barLayout) or {}

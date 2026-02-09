@@ -28,7 +28,8 @@ function OrbResourceTab:Create()
   local yOffset = -20
   
   -- Enable/Disable Section
-  e.enableSection = Helpers.CreateSectionFrame(self.parent, "WiseHudOrbsEnableSection", nil, 500, 80)
+  -- Match the enable container height/layout with the Cast Bar tab (height = 60)
+  e.enableSection = Helpers.CreateSectionFrame(self.parent, "WiseHudOrbsEnableSection", nil, 500, 50)
   e.enableSection:SetPoint("TOPLEFT", self.parent, "TOPLEFT", 20, yOffset)
   
   -- Enable/Disable checkbox
@@ -39,14 +40,16 @@ function OrbResourceTab:Create()
       WiseHudOrbs_SetEnabled(checked)
     end
   end)
-  e.enabledCheckbox:SetPoint("TOPLEFT", e.enableSection, "TOPLEFT", 12, -12)
-
-  yOffset = yOffset - 100
+  -- Use standard section padding for inner content
+  e.enabledCheckbox:SetPoint("TOPLEFT", e.enableSection, "TOPLEFT", Helpers.SECTION_PADDING_LEFT, -Helpers.SECTION_PADDING_TOP)
+  
+  -- Spacing below enable section (section height 50 + etwas weniger Padding)
+  yOffset = yOffset - 70
   
   -- Orb Position Section (now directly below enable section)
   -- Height slightly oversized so all controls (X/Y, Radius, Layout) stay well inside
   -- without needing pixel-perfect manual tuning.
-  e.positionSection = Helpers.CreateSectionFrame(self.parent, "WiseHudOrbsPositionSection", "Orb Position", 500, 300)
+  e.positionSection = Helpers.CreateSectionFrame(self.parent, "WiseHudOrbsPositionSection", "Position Settings", 500, 280)
   
   -- Position title above section
   if e.positionSection.titleText then
@@ -63,7 +66,7 @@ function OrbResourceTab:Create()
   end
 
   local layoutLabel = e.positionSection:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-  layoutLabel:SetPoint("TOPLEFT", e.positionSection, "TOPLEFT", 12, -12)
+  layoutLabel:SetPoint("TOPLEFT", e.positionSection, "TOPLEFT", Helpers.SECTION_PADDING_LEFT, -Helpers.SECTION_PADDING_TOP)
   layoutLabel:SetText("Layout")
   layoutLabel:SetTextColor(1, 1, 1)
 
@@ -143,13 +146,14 @@ function OrbResourceTab:Create()
     end)
   end
   
-  -- Calculate yOffset for next section: position section height (300) + title space (28) + padding
-  yOffset = yOffset - 300 - 20 -- Section height + extra padding
+  -- Calculate yOffset for next section: position section height (280) + title space (28) + padding
+  yOffset = yOffset - 280 - 20 -- Section height + extra padding
 
   -- Alpha settings for Orbs (independent of Health/Power),
   -- placed directly below the position controls.
   local alphaCfg = Helpers.ensureComboTable()
-  e.alphaSection = Helpers.CreateSectionFrame(self.parent, "WiseHudOrbsAlphaSection", "Orb Alpha Settings", 500, 200)
+  -- Slightly increase height so all three alpha sliders have a bit more vertical space
+  e.alphaSection = Helpers.CreateSectionFrame(self.parent, "WiseHudOrbsAlphaSection", "Alpha Settings", 500, 210)
   
   -- Position title above section
   if e.alphaSection.titleText then
@@ -179,7 +183,7 @@ function OrbResourceTab:Create()
       end
     end
   )
-  e.combatAlphaSlider:SetPoint("TOPLEFT", e.alphaSection, "TOPLEFT", 12, -12)
+  e.combatAlphaSlider:SetPoint("TOPLEFT", e.alphaSection, "TOPLEFT", Helpers.SECTION_PADDING_LEFT, -Helpers.SECTION_PADDING_TOP)
 
   -- Out of combat (while recently changed)
   e.nonFullAlphaSlider = Helpers.CreateSlider(
@@ -221,11 +225,11 @@ function OrbResourceTab:Create()
   )
   e.fullIdleAlphaSlider:SetPoint("TOPLEFT", e.nonFullAlphaSlider, "BOTTOMLEFT", 0, -20)
 
-  -- Calculate yOffset for next section: alpha section height (200) + title space (28) + padding
-  yOffset = yOffset - 200 - 20 -- Section height + extra padding
+  -- Calculate yOffset for next section: alpha section height (210) + title space (28) + padding
+  yOffset = yOffset - 210 - 20 -- Section height + extra padding
   
   -- Model Settings Section (with presets + optional custom settings) – now below position and alpha settings
-  e.modelSection = Helpers.CreateSectionFrame(self.parent, "WiseHudOrbsModelSection", "Model Settings", 500, 140)
+  e.modelSection = Helpers.CreateSectionFrame(self.parent, "WiseHudOrbsModelSection", "Model Settings", 500, 120)
   
   -- Position title above section
   if e.modelSection.titleText then
@@ -244,7 +248,7 @@ function OrbResourceTab:Create()
   
   -- Preset dropdown label (in Model Settings section)
   local modelLabel = e.modelSection:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-  modelLabel:SetPoint("TOPLEFT", e.modelSection, "TOPLEFT", 12, -12)
+  modelLabel:SetPoint("TOPLEFT", e.modelSection, "TOPLEFT", Helpers.SECTION_PADDING_LEFT, -Helpers.SECTION_PADDING_TOP)
   modelLabel:SetText("Model Preset:")
   modelLabel:SetTextColor(1, 1, 1)
 
@@ -358,7 +362,8 @@ function OrbResourceTab:Create()
 
   -- Custom model ID label (only visible for "Custom" preset)
   local customModelLabel = e.modelSection:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-  customModelLabel:SetPoint("TOPLEFT", e.modelSection, "TOPLEFT", 12, -64)
+  -- Keep same vertical offset but use standard left padding
+  customModelLabel:SetPoint("TOPLEFT", e.modelSection, "TOPLEFT", Helpers.SECTION_PADDING_LEFT, -64)
   customModelLabel:SetText("Custom FileDataID / Model Path:")
   customModelLabel:SetTextColor(1, 1, 1)
   e.customModelLabel = customModelLabel
@@ -430,9 +435,57 @@ function OrbResourceTab:Create()
   
   -- Apply Model Button (only relevant for custom preset)
   local testModelButton = CreateFrame("Button", "WiseHudOrbsTestModelButton", e.modelSection, "UIPanelButtonTemplate")
-  testModelButton:SetSize(120, 28)
+  -- Link-style button: text only, no visible frame
+  testModelButton:SetSize(100, 20)
   testModelButton:SetPoint("LEFT", e.modelIdEditBox, "RIGHT", 12, 0)
   testModelButton:SetText("Apply Model")
+
+  -- Hide panel art by making textures fully transparent
+  do
+    local flat = "Interface\\Buttons\\WHITE8x8"
+    local n = testModelButton:GetNormalTexture()
+    if n then
+      n:SetTexture(flat)
+      n:SetVertexColor(0, 0, 0, 0)
+    end
+    local p = testModelButton:GetPushedTexture()
+    if p then
+      p:SetTexture(flat)
+      p:SetVertexColor(0, 0, 0, 0)
+    end
+    local h = testModelButton:GetHighlightTexture()
+    if h then
+      h:SetTexture(flat)
+      h:SetVertexColor(0, 0, 0, 0)
+    end
+  end
+
+  -- Small neutral text with hover color similar to section titles
+  testModelButton:SetNormalFontObject("GameFontNormalSmall")
+  testModelButton:SetHighlightFontObject("GameFontHighlightSmall")
+  testModelButton:SetDisabledFontObject("GameFontDisableSmall")
+  do
+    local fs = testModelButton:GetFontString()
+    local normalR, normalG, normalB = 0.8, 0.8, 0.8
+    local hoverR, hoverG, hoverB = 1.0, 0.82, 0.0
+    if fs then
+      fs:ClearAllPoints()
+      fs:SetPoint("CENTER", testModelButton, "CENTER", 0, 0)
+      fs:SetTextColor(normalR, normalG, normalB, 1)
+    end
+    testModelButton:HookScript("OnEnter", function(self)
+      local fontString = self:GetFontString()
+      if fontString and self:IsEnabled() then
+        fontString:SetTextColor(hoverR, hoverG, hoverB, 1)
+      end
+    end)
+    testModelButton:HookScript("OnLeave", function(self)
+      local fontString = self:GetFontString()
+      if fontString and self:IsEnabled() then
+        fontString:SetTextColor(normalR, normalG, normalB, 1)
+      end
+    end)
+  end
   e.testModelButton = testModelButton
   
   testModelButton:SetScript("OnClick", function(self)
@@ -523,11 +576,11 @@ function OrbResourceTab:Create()
     self:SetModelPresetSelection(GetCurrentPresetKey())
   end
   
-  -- Calculate yOffset for next section: model section height (140) + title space (28) + padding
-  yOffset = yOffset - 140 - 20 -- Section height + extra padding
+  -- Calculate yOffset for next section: model section height (120) + title space (28) + padding
+  yOffset = yOffset - 120 - 20 -- Section height + extra padding
   
   -- Camera Position Section (below presets)
-  e.cameraSection = Helpers.CreateSectionFrame(self.parent, "WiseHudOrbsCameraSection", "Camera Position", 500, 200)
+  e.cameraSection = Helpers.CreateSectionFrame(self.parent, "WiseHudOrbsCameraSection", "Camera Position", 500, 210)
   
   -- Position title above section
   if e.cameraSection.titleText then
@@ -547,7 +600,7 @@ function OrbResourceTab:Create()
       WiseHudOrbs_UpdateCameraPosition()
     end
   end)
-  e.cameraXSlider:SetPoint("TOPLEFT", e.cameraSection, "TOPLEFT", 12, -12)
+  e.cameraXSlider:SetPoint("TOPLEFT", e.cameraSection, "TOPLEFT", Helpers.SECTION_PADDING_LEFT, -Helpers.SECTION_PADDING_TOP)
   
   -- Camera Y Position
   e.cameraYSlider = Helpers.CreateSlider(e.cameraSection, "WiseHudOrbsCameraYSlider", "Camera Y", -2.0, 2.0, 0.1, comboCfg.cameraY or ORB_DEFAULTS.cameraY, "%.1f", function(self, value)
@@ -575,8 +628,9 @@ function OrbResourceTab:Create()
   
   self.GetDefaultModelId = GetDefaultModelId
   
-  -- Calculate yOffset for reset button: camera section bottom + padding
-  yOffset = yOffset - 200 - 40 -- Section height + padding
+  -- Calculate yOffset for reset button: camera section bottom + padding.
+  -- Move the reset button 10px nach oben, damit er im sichtbaren Bereich bleibt.
+  yOffset = yOffset - 200 - 30 -- Section height + padding
   
   -- Reset Button (positioned at the end of content)
   e.resetButton = Helpers.CreateResetButton(
@@ -621,76 +675,23 @@ function OrbResourceTab:Refresh()
     self:SetModelPresetSelection(GetCurrentPresetKey())
   end
   
-  -- Helper function to refresh a slider with a value from config
-  local function RefreshSlider(sliderContainer, configValue, defaultValue)
-    if not sliderContainer or not sliderContainer.slider then return end
-    
-    local value = configValue
-    if value == nil then
-      value = defaultValue
-    end
-    
-    -- Ensure value is a number
-    value = tonumber(value)
-    if not value then return end
-    
-    -- Expand range if needed
-    if sliderContainer.ExpandSliderRange then
-      sliderContainer.ExpandSliderRange(value)
-    end
-    
-    -- Update slider range if it was expanded
-    if sliderContainer.currentMin and sliderContainer.currentMax then
-      sliderContainer.slider:SetMinMaxValues(sliderContainer.currentMin, sliderContainer.currentMax)
-      local sliderName = sliderContainer.slider:GetName()
-      if _G[sliderName .. "Low"] then
-        _G[sliderName .. "Low"]:SetText(tostring(sliderContainer.currentMin))
-      end
-      if _G[sliderName .. "High"] then
-        _G[sliderName .. "High"]:SetText(tostring(sliderContainer.currentMax))
-      end
-    end
-    
-    -- Round value to step
-    local step = sliderContainer.step or 1
-    local roundedValue
-    if step < 1 then
-      roundedValue = math.floor(value / step + 0.5) * step
-    else
-      roundedValue = math.floor(value + 0.5)
-    end
-    
-    -- Ensure value is within range
-    local minVal = sliderContainer.currentMin or sliderContainer.initialMin
-    local maxVal = sliderContainer.currentMax or sliderContainer.initialMax
-    roundedValue = math.max(minVal, math.min(maxVal, roundedValue))
-    
-    -- Set slider value
-    sliderContainer.slider:SetValue(roundedValue)
-    
-    -- Update display
-    if sliderContainer.UpdateDisplay then
-      sliderContainer.UpdateDisplay(roundedValue)
-    end
-  end
-  
   -- Refresh all sliders with their config values
-  RefreshSlider(e.xSlider, comboCfg.x, ORB_DEFAULTS.x)
-  RefreshSlider(e.ySlider, comboCfg.y, ORB_DEFAULTS.y)
-  RefreshSlider(e.radiusSlider, comboCfg.radius, ORB_DEFAULTS.radius)
-  RefreshSlider(e.cameraXSlider, comboCfg.cameraX, ORB_DEFAULTS.cameraX)
-  RefreshSlider(e.cameraYSlider, comboCfg.cameraY, ORB_DEFAULTS.cameraY)
-  RefreshSlider(e.cameraZSlider, comboCfg.cameraZ, ORB_DEFAULTS.cameraZ)
+  Helpers.RefreshSliderFromConfig(e.xSlider, comboCfg.x, ORB_DEFAULTS.x)
+  Helpers.RefreshSliderFromConfig(e.ySlider, comboCfg.y, ORB_DEFAULTS.y)
+  Helpers.RefreshSliderFromConfig(e.radiusSlider, comboCfg.radius, ORB_DEFAULTS.radius)
+  Helpers.RefreshSliderFromConfig(e.cameraXSlider, comboCfg.cameraX, ORB_DEFAULTS.cameraX)
+  Helpers.RefreshSliderFromConfig(e.cameraYSlider, comboCfg.cameraY, ORB_DEFAULTS.cameraY)
+  Helpers.RefreshSliderFromConfig(e.cameraZSlider, comboCfg.cameraZ, ORB_DEFAULTS.cameraZ)
 
   local defaultsAlpha = ORB_DEFAULTS.alpha or {}
   if e.combatAlphaSlider then
-    RefreshSlider(e.combatAlphaSlider, comboCfg.orbCombatAlpha, defaultsAlpha.combat or 40)
+    Helpers.RefreshSliderFromConfig(e.combatAlphaSlider, comboCfg.orbCombatAlpha, defaultsAlpha.combat or 40)
   end
   if e.nonFullAlphaSlider then
-    RefreshSlider(e.nonFullAlphaSlider, comboCfg.orbNonFullAlpha, defaultsAlpha.nonFull or 20)
+    Helpers.RefreshSliderFromConfig(e.nonFullAlphaSlider, comboCfg.orbNonFullAlpha, defaultsAlpha.nonFull or 20)
   end
   if e.fullIdleAlphaSlider then
-    RefreshSlider(e.fullIdleAlphaSlider, comboCfg.orbFullIdleAlpha, defaultsAlpha.fullIdle or 0)
+    Helpers.RefreshSliderFromConfig(e.fullIdleAlphaSlider, comboCfg.orbFullIdleAlpha, defaultsAlpha.fullIdle or 0)
   end
 
   -- Update layout dropdown
