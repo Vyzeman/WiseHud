@@ -1,6 +1,12 @@
 WiseHud Changelog
 =================
 
+Version 1.0.4
+-------------
+- Added orb alpha settings and improved visibility handling.
+- Improved cast bar logic to avoid stale events affecting the display.
+- Refined options panel layout, padding, and section anchoring for better consistency.
+
 Version 1.0.3
 -------------
 - Refined orb names and presets for better customization.
