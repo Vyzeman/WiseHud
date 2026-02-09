@@ -1,0 +1,21 @@
+WiseHud Changelog
+=================
+
+Version 1.0.3
+-------------
+- Refined orb names and presets for better customization.
+- Extended layout options for orbs and the options panel.
+- Improved alpha and layout handling for the health and power modules.
+
+Version 1.0.2
+-------------
+- Various internal cleanups and minor improvements.
+
+Version 1.0.1
+-------------
+- Initial public release including:
+  - Health and resource bars.
+  - Combo point orbs for multiple classes.
+  - Configurable options via the interface options menu.
+
+
