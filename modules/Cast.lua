@@ -351,6 +351,20 @@ function WiseHudCast_OnSpellCastStop(unit, castGUID, spellID)
     -- Let it fall through to clean up
   end
 
+  -- If we are already casting or channeling something (e.g. via spell queue or
+  -- pressing the button again), this STOP event most likely belongs to a
+  -- previous cast and must not hide the current cast bar.
+  do
+    local activeCast = UnitCastingInfo("player")
+    if activeCast then
+      return
+    end
+    local activeChannel = UnitChannelInfo("player")
+    if activeChannel then
+      return
+    end
+  end
+
   isCasting = false
   isChanneling = false
 
@@ -373,6 +387,19 @@ function WiseHudCast_OnSpellCastFailed(unit, castGUID, spellID)
     end
   end
 
+  -- If a new cast or channel is already active at this point, this FAILED
+  -- event is most likely stale and must not affect the new cast bar.
+  do
+    local activeCast = UnitCastingInfo("player")
+    if activeCast then
+      return
+    end
+    local activeChannel = UnitChannelInfo("player")
+    if activeChannel then
+      return
+    end
+  end
+
   isCasting = false
   isChanneling = false
 
@@ -380,6 +407,11 @@ function WiseHudCast_OnSpellCastFailed(unit, castGUID, spellID)
     castBar:SetStatusBarColor(1, 0, 0)
     C_Timer.After(0.3, function()
       if castBar then
+        -- A new cast/channel might have started in the meantime. In that case,
+        -- the new cast bar must not be hidden by this old FAIL timer.
+        if UnitCastingInfo("player") or UnitChannelInfo("player") then
+          return
+        end
         castBar:Hide()
         castBG:Hide()
         castIcon:Hide()
