@@ -145,8 +145,86 @@ function OrbResourceTab:Create()
   
   -- Calculate yOffset for next section: position section height (300) + title space (28) + padding
   yOffset = yOffset - 300 - 20 -- Section height + extra padding
+
+  -- Alpha settings for Orbs (independent of Health/Power),
+  -- placed directly below the position controls.
+  local alphaCfg = Helpers.ensureComboTable()
+  e.alphaSection = Helpers.CreateSectionFrame(self.parent, "WiseHudOrbsAlphaSection", "Orb Alpha Settings", 500, 200)
   
-  -- Model Settings Section (with presets + optional custom settings) – now below position settings
+  -- Position title above section
+  if e.alphaSection.titleText then
+    e.alphaSection.titleText:SetPoint("TOPLEFT", self.parent, "TOPLEFT", 20, yOffset)
+    yOffset = yOffset - 28 -- Space for title
+  end
+  
+  e.alphaSection:SetPoint("TOPLEFT", self.parent, "TOPLEFT", 20, yOffset)
+
+  local defaultsAlpha = ORB_DEFAULTS.alpha or {}
+
+  -- Combat Alpha (used while in combat)
+  e.combatAlphaSlider = Helpers.CreateSlider(
+    e.alphaSection,
+    "WiseHudOrbsCombatAlphaSlider",
+    "Combat Alpha",
+    0,
+    100,
+    5,
+    alphaCfg.orbCombatAlpha or defaultsAlpha.combat or 40,
+    "%d%%",
+    function(self, value)
+      local cfg = Helpers.ensureComboTable()
+      cfg.orbCombatAlpha = value
+      if WiseHudOrbs_ApplyAlpha then
+        WiseHudOrbs_ApplyAlpha()
+      end
+    end
+  )
+  e.combatAlphaSlider:SetPoint("TOPLEFT", e.alphaSection, "TOPLEFT", 12, -12)
+
+  -- Out of combat (while recently changed)
+  e.nonFullAlphaSlider = Helpers.CreateSlider(
+    e.alphaSection,
+    "WiseHudOrbsNonFullAlphaSlider",
+    "Out of Combat Alpha",
+    0,
+    100,
+    5,
+    alphaCfg.orbNonFullAlpha or defaultsAlpha.nonFull or 20,
+    "%d%%",
+    function(self, value)
+      local cfg = Helpers.ensureComboTable()
+      cfg.orbNonFullAlpha = value
+      if WiseHudOrbs_ApplyAlpha then
+        WiseHudOrbs_ApplyAlpha()
+      end
+    end
+  )
+  e.nonFullAlphaSlider:SetPoint("TOPLEFT", e.combatAlphaSlider, "BOTTOMLEFT", 0, -20)
+
+  -- Idle out of combat (no recent changes)
+  e.fullIdleAlphaSlider = Helpers.CreateSlider(
+    e.alphaSection,
+    "WiseHudOrbsFullIdleAlphaSlider",
+    "Idle Alpha",
+    0,
+    100,
+    5,
+    alphaCfg.orbFullIdleAlpha or defaultsAlpha.fullIdle or 0,
+    "%d%%",
+    function(self, value)
+      local cfg = Helpers.ensureComboTable()
+      cfg.orbFullIdleAlpha = value
+      if WiseHudOrbs_ApplyAlpha then
+        WiseHudOrbs_ApplyAlpha()
+      end
+    end
+  )
+  e.fullIdleAlphaSlider:SetPoint("TOPLEFT", e.nonFullAlphaSlider, "BOTTOMLEFT", 0, -20)
+
+  -- Calculate yOffset for next section: alpha section height (200) + title space (28) + padding
+  yOffset = yOffset - 200 - 20 -- Section height + extra padding
+  
+  -- Model Settings Section (with presets + optional custom settings) – now below position and alpha settings
   e.modelSection = Helpers.CreateSectionFrame(self.parent, "WiseHudOrbsModelSection", "Model Settings", 500, 140)
   
   -- Position title above section
@@ -604,6 +682,17 @@ function OrbResourceTab:Refresh()
   RefreshSlider(e.cameraYSlider, comboCfg.cameraY, ORB_DEFAULTS.cameraY)
   RefreshSlider(e.cameraZSlider, comboCfg.cameraZ, ORB_DEFAULTS.cameraZ)
 
+  local defaultsAlpha = ORB_DEFAULTS.alpha or {}
+  if e.combatAlphaSlider then
+    RefreshSlider(e.combatAlphaSlider, comboCfg.orbCombatAlpha, defaultsAlpha.combat or 40)
+  end
+  if e.nonFullAlphaSlider then
+    RefreshSlider(e.nonFullAlphaSlider, comboCfg.orbNonFullAlpha, defaultsAlpha.nonFull or 20)
+  end
+  if e.fullIdleAlphaSlider then
+    RefreshSlider(e.fullIdleAlphaSlider, comboCfg.orbFullIdleAlpha, defaultsAlpha.fullIdle or 0)
+  end
+
   -- Update layout dropdown
   if self.SetLayoutSelection and e.layoutDropdown then
     local layoutKey = comboCfg.layoutType or ORB_DEFAULTS.layoutType or "circle"
@@ -629,6 +718,9 @@ function OrbResourceTab:Reset()
   comboCfg.modelId = nil
   comboCfg.modelPreset = nil
   comboCfg.layoutType = nil
+  comboCfg.orbCombatAlpha = nil
+  comboCfg.orbNonFullAlpha = nil
+  comboCfg.orbFullIdleAlpha = nil
   
   local e = self.elements
   if e.xSlider and e.xSlider.slider then 
@@ -654,6 +746,22 @@ function OrbResourceTab:Reset()
   if e.cameraZSlider and e.cameraZSlider.slider then 
     e.cameraZSlider.slider:SetValue(ORB_DEFAULTS.cameraZ)
     if e.cameraZSlider.UpdateDisplay then e.cameraZSlider.UpdateDisplay(ORB_DEFAULTS.cameraZ) end
+  end
+  local defaultsAlpha = ORB_DEFAULTS.alpha or {}
+  if e.combatAlphaSlider and e.combatAlphaSlider.slider then
+    local v = defaultsAlpha.combat or 40
+    e.combatAlphaSlider.slider:SetValue(v)
+    if e.combatAlphaSlider.UpdateDisplay then e.combatAlphaSlider.UpdateDisplay(v) end
+  end
+  if e.nonFullAlphaSlider and e.nonFullAlphaSlider.slider then
+    local v = defaultsAlpha.nonFull or 20
+    e.nonFullAlphaSlider.slider:SetValue(v)
+    if e.nonFullAlphaSlider.UpdateDisplay then e.nonFullAlphaSlider.UpdateDisplay(v) end
+  end
+  if e.fullIdleAlphaSlider and e.fullIdleAlphaSlider.slider then
+    local v = defaultsAlpha.fullIdle or 0
+    e.fullIdleAlphaSlider.slider:SetValue(v)
+    if e.fullIdleAlphaSlider.UpdateDisplay then e.fullIdleAlphaSlider.UpdateDisplay(v) end
   end
   if e.enabledCheckbox then e.enabledCheckbox:SetChecked(true) end
   if e.modelIdEditBox and self.GetDefaultModelId then

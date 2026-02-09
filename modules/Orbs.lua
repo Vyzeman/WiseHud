@@ -16,6 +16,10 @@ local ARC_LENGTH = math.rad(ORB_DEFAULTS.arcLengthDeg)
 
 local orbs = {}
 local orbAnimations = {}
+local orbsFrame = nil
+local orbsCurrentAlpha = nil
+local orbsTargetAlpha = nil
+local lastKnownPoints = nil
 local EnsureCameraPosition -- forward declaration so it can be used earlier
 local UpdateOrbs           -- forward declaration so it can be used earlier
 local GetPowerTypeForClass -- forward declaration so it can be used earlier
@@ -28,7 +32,35 @@ local DEFAULT_CAMERA_X = ORB_DEFAULTS.cameraX
 local DEFAULT_CAMERA_Y = ORB_DEFAULTS.cameraY
 local DEFAULT_CAMERA_Z = ORB_DEFAULTS.cameraZ
 
+-- Default alpha settings for Orbs (percent, 0–100),
+-- configured separately from Health/Power.
+local DEFAULT_ALPHA_COMBAT    = (ORB_DEFAULTS.alpha and ORB_DEFAULTS.alpha.combat)   or 100
+local DEFAULT_ALPHA_NONFULL   = (ORB_DEFAULTS.alpha and ORB_DEFAULTS.alpha.nonFull)  or 50
+local DEFAULT_ALPHA_FULL_IDLE = (ORB_DEFAULTS.alpha and ORB_DEFAULTS.alpha.fullIdle) or 0
+
 local CUSTOM_PRESET_KEY = "custom"
+
+-- Get or create a dedicated parent frame for all orbs so
+-- alpha/visibility can be controlled centrally without
+-- affecting the rest of the WiseHud elements.
+local function GetOrbsFrame()
+  if not WiseHudFrame then
+    return nil
+  end
+
+  if not orbsFrame or not orbsFrame.GetParent or orbsFrame:GetParent() ~= WiseHudFrame then
+    orbsFrame = CreateFrame("Frame", "WiseHudOrbsFrame", WiseHudFrame)
+    -- Orbs should follow the main HUD position/size but
+    -- stay in their own sub-frame.
+    orbsFrame:SetAllPoints(WiseHudFrame)
+    -- Keep strata/frame level high enough so models render
+    -- above the basic HUD art, similar to previous setup.
+    orbsFrame:SetFrameStrata("HIGH")
+    orbsFrame:SetFrameLevel(20)
+  end
+
+  return orbsFrame
+end
 
 local function FindOrbPreset(presetKey)
   if not presetKey or presetKey == "" then
@@ -46,6 +78,79 @@ local function GetOrbsSettings()
   WiseHudDB = WiseHudDB or {}
   WiseHudDB.comboSettings = WiseHudDB.comboSettings or {}
   return WiseHudDB.comboSettings
+end
+
+-- Returns orb alpha settings as 0–1 values (combat, nonFull, fullIdle)
+local function GetOrbsAlphaSettings()
+  local cfg = GetOrbsSettings()
+  local combat   = cfg.orbCombatAlpha   or DEFAULT_ALPHA_COMBAT
+  local nonFull  = cfg.orbNonFullAlpha  or DEFAULT_ALPHA_NONFULL
+  local fullIdle = cfg.orbFullIdleAlpha or DEFAULT_ALPHA_FULL_IDLE
+  return combat / 100, nonFull / 100, fullIdle / 100
+end
+
+local function RecomputeOrbsTargetAlpha()
+  -- Independent alpha logic for Orbs that mirrors the semantics
+  -- of Health/Power, but uses its own settings and still relies
+  -- on the shared WiseHudCombatInfo timestamps (separate field).
+  local combatAlpha, nonFullAlpha, fullIdleAlpha = GetOrbsAlphaSettings()
+
+  local inCombat = (WiseHudCombatInfo and WiseHudCombatInfo.inCombat)
+    or (UnitAffectingCombat and UnitAffectingCombat("player") and true or false)
+
+  -- When Orbs test mode is active, force combat alpha so
+  -- they stay visible while configuring them.
+  local cfg = GetOrbsSettings()
+  if cfg.testMode then
+    inCombat = true
+  end
+
+  local sinceChange
+  if WiseHudCombatInfo and WiseHudCombatInfo.lastOrbChange then
+    sinceChange = GetTime() - WiseHudCombatInfo.lastOrbChange
+  end
+
+  if inCombat then
+    orbsTargetAlpha = combatAlpha
+  elseif sinceChange and sinceChange < 5 then -- same fade delay as Health/Power
+    orbsTargetAlpha = nonFullAlpha
+  else
+    orbsTargetAlpha = fullIdleAlpha
+  end
+end
+
+function WiseHudOrbs_ApplyAlpha()
+  -- Recompute desired alpha based on Orb-specific settings.
+  RecomputeOrbsTargetAlpha()
+
+  if orbsCurrentAlpha == nil then
+    orbsCurrentAlpha = orbsTargetAlpha
+  end
+
+  -- Apply alpha directly to each orb model so the effect
+  -- is guaranteed to affect the PlayerModel frames.
+  if orbsCurrentAlpha ~= nil then
+    for _, orb in ipairs(orbs) do
+      if orb and orb.SetAlpha then
+        pcall(orb.SetAlpha, orb, orbsCurrentAlpha)
+      end
+    end
+  end
+end
+
+function WiseHudOrbs_UpdateAlpha(elapsed)
+  if not orbsTargetAlpha or not WiseHudHP_SmoothAlpha then
+    return
+  end
+
+  orbsCurrentAlpha = WiseHudHP_SmoothAlpha(orbsCurrentAlpha, orbsTargetAlpha, elapsed)
+  if orbsCurrentAlpha ~= nil then
+    for _, orb in ipairs(orbs) do
+      if orb and orb.SetAlpha then
+        pcall(orb.SetAlpha, orb, orbsCurrentAlpha)
+      end
+    end
+  end
 end
 
 -- Determine class/spec specific default orb preset.
@@ -282,7 +387,6 @@ local function AfterModelApplied(orb)
       return
     end
     ConfigureOrbModel(orb)
-    orb:SetAlpha(1)
   end)
 end
 
@@ -603,7 +707,11 @@ local function CreateOrbs()
   if not WiseHudFrame then
     return
   end
-  
+
+  local parentFrame = GetOrbsFrame()
+  if not parentFrame then
+    return
+  end
   if #orbs > 0 then
     local maxPoints = GetMaxPoints()
     if #orbs ~= maxPoints then
@@ -640,7 +748,7 @@ local function CreateOrbs()
   WiseHudFrame:SetSize(radius * 2 + ORB_SIZE, radius * 2 + ORB_SIZE)
 
   for i = 1, maxPoints do
-    local orb = CreateFrame("PlayerModel", "WiseHudOrb"..i, WiseHudFrame)
+    local orb = CreateFrame("PlayerModel", "WiseHudOrb"..i, parentFrame)
     orb:SetSize(ORB_SIZE, ORB_SIZE)
     orb:SetFrameStrata("HIGH")
     orb:SetFrameLevel(20)
@@ -662,7 +770,7 @@ local function CreateOrbs()
     orb:SetAlpha(1)
     orb:SetScale(1)
     orb:ClearAllPoints()
-    orb:SetPoint("CENTER", WiseHudFrame, "CENTER", 0, 0)
+    orb:SetPoint("CENTER", parentFrame, "CENTER", 0, 0)
     
     orb:Hide()
     
@@ -674,6 +782,9 @@ local function CreateOrbs()
       targetY = 0,
     }
   end
+
+  -- Ensure container alpha is applied once orbs exist
+  WiseHudOrbs_ApplyAlpha()
 end
 
 local function GetComboPoints()
@@ -760,7 +871,8 @@ function WiseHudOrbs_UpdateAnimations(elapsed)
         anim.currentX = anim.targetX
         anim.currentY = anim.targetY
         orb:ClearAllPoints()
-        orb:SetPoint("CENTER", WiseHudFrame, "CENTER", anim.currentX, anim.currentY)
+        local parentFrame = GetOrbsFrame() or WiseHudFrame
+        orb:SetPoint("CENTER", parentFrame, "CENTER", anim.currentX, anim.currentY)
       end
 
       local posDiffX = anim.targetX - (anim.currentX or 0)
@@ -773,12 +885,14 @@ function WiseHudOrbs_UpdateAnimations(elapsed)
         anim.currentY = anim.currentY + posDiffY * moveAmount
         
         orb:ClearAllPoints()
-        orb:SetPoint("CENTER", WiseHudFrame, "CENTER", anim.currentX, anim.currentY)
+        local parentFrame = GetOrbsFrame() or WiseHudFrame
+        orb:SetPoint("CENTER", parentFrame, "CENTER", anim.currentX, anim.currentY)
       else
         anim.currentX = anim.targetX
         anim.currentY = anim.targetY
         orb:ClearAllPoints()
-        orb:SetPoint("CENTER", WiseHudFrame, "CENTER", anim.currentX, anim.currentY)
+        local parentFrame = GetOrbsFrame() or WiseHudFrame
+        orb:SetPoint("CENTER", parentFrame, "CENTER", anim.currentX, anim.currentY)
       end
     end
   end
@@ -995,6 +1109,15 @@ function WiseHudOrbs_OnPowerUpdate(unit, powerType)
       -- mirrors the behavior of a /reload and fixes cases where the client
       -- doesn't correctly render individual PlayerModel frames.
       local points = GetComboPoints()
+
+      -- Track combo-like resource changes separately from the main
+      -- power resource so Orbs can use their own alpha fade logic.
+      if WiseHudCombatInfo then
+        if lastKnownPoints == nil or points ~= lastKnownPoints then
+          lastKnownPoints = points
+          WiseHudCombatInfo.lastOrbChange = GetTime()
+        end
+      end
       if points > 0 and not orbsReinitializedAfterFirstPoints then
         orbsReinitializedAfterFirstPoints = true
 
@@ -1044,11 +1167,9 @@ function WiseHudOrbs_UpdateCameraPosition()
   -- Mark camera as initialized and fade orbs in with a fresh layout update
   if not orbsCameraReady then
     orbsCameraReady = true
-    for _, orb in ipairs(orbs) do
-      if orb then
-        orb:SetAlpha(1)
-      end
-    end
+    -- Apply alpha once on the shared parent frame instead
+    -- of per-orb to keep behavior centralized.
+    WiseHudOrbs_ApplyAlpha()
     UpdateOrbs()
   else
     -- Even after initialization, re-apply camera (forced) for all orbs.

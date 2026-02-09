@@ -55,6 +55,9 @@ function WiseHudCore_OnCombatStateChanged(inCombat)
   if WiseHudPower_ApplyAlpha then
     WiseHudPower_ApplyAlpha()
   end
+  if WiseHudOrbs_ApplyAlpha then
+    WiseHudOrbs_ApplyAlpha()
+  end
 end
 
 function WiseHudCore_OnUpdate(elapsed)
@@ -76,6 +79,9 @@ function WiseHudCore_OnUpdate(elapsed)
       if WiseHudPower_ApplyAlpha then
         WiseHudPower_ApplyAlpha()
       end
+      if WiseHudOrbs_ApplyAlpha then
+        WiseHudOrbs_ApplyAlpha()
+      end
     end
   end
 
@@ -84,6 +90,9 @@ function WiseHudCore_OnUpdate(elapsed)
   end
   if WiseHudPower_UpdateAlpha then
     WiseHudPower_UpdateAlpha(elapsed)
+  end
+  if WiseHudOrbs_UpdateAlpha then
+    WiseHudOrbs_UpdateAlpha(elapsed)
   end
   
   if WiseHudOrbs_UpdateAnimations then

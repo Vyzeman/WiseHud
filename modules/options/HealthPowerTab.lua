@@ -49,7 +49,7 @@ function HealthPowerTab:Create()
   
   -- Layout Section
   local layout = Helpers.ensureLayoutTable()
-  e.layoutSection = Helpers.CreateSectionFrame(self.parent, "WiseHudHealthPowerLayoutSection", "HUD Arc Size and Distance", 500, 280)
+  e.layoutSection = Helpers.CreateSectionFrame(self.parent, "WiseHudHealthPowerLayoutSection", "Position", 500, 280)
   
   -- Position title above section
   if e.layoutSection.titleText then
@@ -119,8 +119,8 @@ function HealthPowerTab:Create()
   end)
   e.combatAlphaSlider:SetPoint("TOPLEFT", e.alphaSection, "TOPLEFT", 12, -12)
   
-  -- Not full, no combat
-  e.nonFullAlphaSlider = Helpers.CreateSlider(e.alphaSection, "WiseHudNonFullAlphaSlider", "Not Full (ooc)", 0, 100, 5, alphaCfg.nonFullAlpha or HP_DEFAULTS.alpha.nonFull, "%d%%", function(self, value)
+  -- Out of combat (while recently changed)
+  e.nonFullAlphaSlider = Helpers.CreateSlider(e.alphaSection, "WiseHudNonFullAlphaSlider", "Out of Combat Alpha", 0, 100, 5, alphaCfg.nonFullAlpha or HP_DEFAULTS.alpha.nonFull, "%d%%", function(self, value)
     local cfg = Helpers.ensureAlphaTable()
     cfg.nonFullAlpha = value
     if WiseHudHealth_ApplyAlpha then WiseHudHealth_ApplyAlpha() end
@@ -128,8 +128,8 @@ function HealthPowerTab:Create()
   end)
   e.nonFullAlphaSlider:SetPoint("TOPLEFT", e.combatAlphaSlider, "BOTTOMLEFT", 0, -20)
   
-  -- Full, no combat
-  e.fullIdleAlphaSlider = Helpers.CreateSlider(e.alphaSection, "WiseHudFullIdleAlphaSlider", "Full (ooc)", 0, 100, 5, alphaCfg.fullIdleAlpha or HP_DEFAULTS.alpha.fullIdle, "%d%%", function(self, value)
+  -- Idle out of combat (no recent changes)
+  e.fullIdleAlphaSlider = Helpers.CreateSlider(e.alphaSection, "WiseHudFullIdleAlphaSlider", "Idle Alpha", 0, 100, 5, alphaCfg.fullIdleAlpha or HP_DEFAULTS.alpha.fullIdle, "%d%%", function(self, value)
     local cfg = Helpers.ensureAlphaTable()
     cfg.fullIdleAlpha = value
     if WiseHudHealth_ApplyAlpha then WiseHudHealth_ApplyAlpha() end

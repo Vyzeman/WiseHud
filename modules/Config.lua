@@ -105,6 +105,17 @@ WiseHudConfig.defaults.orbs = {
 
   -- Default model (ID)
   modelId = 1372960,
+
+  -- Alpha defaults for Orbs in percent (0–100),
+  -- same semantics as Health/Power but configured separately:
+  -- combat    = alpha while in combat
+  -- nonFull   = alpha out of combat shortly after a change
+  -- fullIdle  = alpha out of combat and idle for a while
+  alpha = {
+    combat   = 100, -- fully visible in combat
+    nonFull  = 50,  -- half transparent out of combat after recent change
+    fullIdle = 0,   -- fully hidden when idle out of combat
+  },
 }
 
 -- Orb model presets (each with model FileDataID and camera defaults)
