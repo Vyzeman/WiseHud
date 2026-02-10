@@ -1,6 +1,11 @@
 WiseHud Changelog
 =================
 
+Version 1.1.0-beta
+------------------
+- Added Death Knight support for resource orbs.
+- Added configuration for orb size to better match personal preference and UI scale.
+
 Version 1.0.4
 -------------
 - Added orb alpha settings and improved visibility handling.
