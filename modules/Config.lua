@@ -223,6 +223,16 @@ WiseHudConfig.defaults.orbPresets = {
     cameraX = -3,
     cameraY =  0.0,
     cameraZ =  -1.7,
+  },
+  {
+    key     = "runes_orb",
+    name    = "Runes",
+    -- Six different rune FileDataIDs, used per-orb via
+    -- the comma-separated list support in Orbs.lua.
+    modelId = "3655832,3655858,3655922,3655937,3655957,3655986",
+    cameraX = -3,
+    cameraY =  0.0,
+    cameraZ =  -1.7,
   }
 }
 

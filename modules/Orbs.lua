@@ -180,6 +180,11 @@ local function GetDefaultOrbPresetForClass()
     return "chi_orb"
   end
 
+  -- Death Knight (all specs) -> Runes preset
+  if class == "DEATHKNIGHT" then
+    return "runes_orb"
+  end
+
   -- Rogue (all specs) -> White Flame
   if class == "ROGUE" then
     return "flame_orb_2"
@@ -291,6 +296,11 @@ local function GetOrbsRadius()
   return cfg.radius or DEFAULT_RADIUS
 end
 
+local function GetOrbSize()
+  local cfg = GetOrbsSettings()
+  return cfg.orbSize or ORB_SIZE
+end
+
 local function GetOrbsLayoutType()
   local cfg = GetOrbsSettings()
   return cfg.layoutType or ORB_DEFAULTS.layoutType or "circle"
@@ -338,6 +348,11 @@ local function NormalizeModelPath(modelPath)
     return nil
   end
 
+  -- Already-normalized list (e.g. from a previous call)
+  if type(modelPath) == "table" then
+    return modelPath
+  end
+
   if type(modelPath) == "number" then
     return modelPath
   end
@@ -346,6 +361,21 @@ local function NormalizeModelPath(modelPath)
     local trimmed = strtrim(modelPath)
     if trimmed == "" then
       return nil
+    end
+    -- Support comma-separated lists of model IDs / paths for per-orb customization.
+    if string.find(trimmed, ",", 1, true) then
+      local list = {}
+      for token in string.gmatch(trimmed, "([^,]+)") do
+        local t = strtrim(token)
+        if t ~= "" then
+          local num = tonumber(t)
+          table.insert(list, num or t)
+        end
+      end
+      if #list > 0 then
+        return list
+      end
+      -- fall through to single-value handling if parsing failed
     end
     local asNumber = tonumber(trimmed)
     if asNumber then
@@ -365,6 +395,18 @@ local function ApplyModelToOrb(orb, modelPath)
   local normalized = NormalizeModelPath(modelPath)
   if not normalized then
     return false
+  end
+
+   -- If we received a list (from a comma-separated config), pick
+   -- a per-orb entry based on orb index. This allows different
+   -- FileDataIDs per orb while keeping the config field generic.
+  if type(normalized) == "table" then
+    local idx = (orb and orb.orbIndex) or 1
+    local perOrb = normalized[idx] or normalized[#normalized] or normalized[1]
+    if not perOrb then
+      return false
+    end
+    normalized = perOrb
   end
 
   if type(normalized) == "number" then
@@ -554,10 +596,22 @@ local function TestModelPath(modelPath)
   if not modelPath or modelPath == "" then
     return false
   end
+
+  -- When a comma-separated list is provided, test only the first entry.
+  if type(modelPath) == "string" then
+    local trimmed = strtrim(modelPath)
+    local commaPos = string.find(trimmed, ",", 1, true)
+    if commaPos and commaPos > 1 then
+      modelPath = strtrim(string.sub(trimmed, 1, commaPos - 1))
+    else
+      modelPath = trimmed
+    end
+  end
   
   -- Create a temporary test orb (use UIParent as parent, will be cleaned up)
   local testOrb = CreateFrame("PlayerModel", nil, UIParent)
-  testOrb:SetSize(ORB_SIZE, ORB_SIZE)
+  local testSize = GetOrbSize()
+  testOrb:SetSize(testSize, testSize)
   testOrb:SetFrameStrata("TOOLTIP")
   testOrb:SetFrameLevel(1000)
   testOrb:SetPoint("CENTER", UIParent, "CENTER", -10000, -10000) -- Position off-screen
@@ -792,11 +846,13 @@ local function CreateOrbs()
 
   local radius = GetOrbsRadius()
   local maxPoints = GetMaxPoints()
-  WiseHudFrame:SetSize(radius * 2 + ORB_SIZE, radius * 2 + ORB_SIZE)
+  local orbSize = GetOrbSize()
+  WiseHudFrame:SetSize(radius * 2 + orbSize, radius * 2 + orbSize)
 
   for i = 1, maxPoints do
     local orb = CreateFrame("PlayerModel", "WiseHudOrb"..i, parentFrame)
-    orb:SetSize(ORB_SIZE, ORB_SIZE)
+    orb.orbIndex = i
+    orb:SetSize(orbSize, orbSize)
     orb:SetFrameStrata("HIGH")
     orb:SetFrameLevel(20)
     orb:SetKeepModelOnHide(true)
@@ -1252,14 +1308,24 @@ function WiseHudOrbs_ApplyLayout()
   local x = GetOrbsX()
   local y = GetOrbsY()
   local radius = GetOrbsRadius()
+  local orbSize = GetOrbSize()
   
   local currentWidth, currentHeight = WiseHudFrame:GetSize()
-  local comboSize = radius * 2 + ORB_SIZE
+  local comboSize = radius * 2 + orbSize
   local maxSize = math.max(currentWidth or 0, currentHeight or 0, comboSize)
   if maxSize > (currentWidth or 0) or maxSize > (currentHeight or 0) then
     WiseHudFrame:SetSize(maxSize, maxSize)
   end
-  
+
+  -- Ensure existing orb frames reflect the latest configured size.
+  if #orbs > 0 then
+    for _, orb in ipairs(orbs) do
+      if orb and orb.SetSize then
+        orb:SetSize(orbSize, orbSize)
+      end
+    end
+  end
+
   if #orbs > 0 then
     UpdateOrbs()
   end

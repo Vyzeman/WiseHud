@@ -47,11 +47,11 @@ function OrbResourceTab:Create()
   yOffset = yOffset - 70
   
   -- Orb Position Section (now directly below enable section)
-  -- Height slightly oversized so all controls (X/Y, Radius, Layout) stay well inside
-  -- without needing pixel-perfect manual tuning.
-  e.positionSection = Helpers.CreateSectionFrame(self.parent, "WiseHudOrbsPositionSection", "Position Settings", 500, 280)
+  -- Height slightly oversized so all controls (Layout, X/Y, Radius, Size) sauber
+  -- innerhalb des Containers bleiben, ohne gequetscht zu wirken.
+  e.positionSection = Helpers.CreateSectionFrame(self.parent, "WiseHudOrbsPositionSection", "Position Settings", 500, 350)
   yOffset = Helpers.AnchorSectionWithTitle(self.parent, e.positionSection, yOffset, {
-    contentHeight = 280,
+    contentHeight = 340,
     spacingBelow = 20,
   })
   
@@ -94,6 +94,14 @@ function OrbResourceTab:Create()
     if WiseHudOrbs_ApplyLayout then WiseHudOrbs_ApplyLayout() end
   end)
   e.radiusSlider:SetPoint("TOPLEFT", e.ySlider, "BOTTOMLEFT", 0, -20)
+
+  -- Orb Size
+  e.sizeSlider = Helpers.CreateSlider(e.positionSection, "WiseHudOrbsSizeSlider", "Orb Size", 30, 100, 2, comboCfg.orbSize or ORB_DEFAULTS.orbSize, nil, function(self, value)
+    local cfg = Helpers.ensureComboTable()
+    cfg.orbSize = value
+    if WiseHudOrbs_ApplyLayout then WiseHudOrbs_ApplyLayout() end
+  end)
+  e.sizeSlider:SetPoint("TOPLEFT", e.radiusSlider, "BOTTOMLEFT", 0, -20)
 
   self.SetLayoutSelection = function(_, layoutKey)
     layoutKey = layoutKey or GetCurrentLayoutType()
@@ -663,6 +671,9 @@ function OrbResourceTab:Refresh()
   Helpers.RefreshSliderFromConfig(e.xSlider, comboCfg.x, ORB_DEFAULTS.x)
   Helpers.RefreshSliderFromConfig(e.ySlider, comboCfg.y, ORB_DEFAULTS.y)
   Helpers.RefreshSliderFromConfig(e.radiusSlider, comboCfg.radius, ORB_DEFAULTS.radius)
+  if e.sizeSlider then
+    Helpers.RefreshSliderFromConfig(e.sizeSlider, comboCfg.orbSize, ORB_DEFAULTS.orbSize)
+  end
   Helpers.RefreshSliderFromConfig(e.cameraXSlider, comboCfg.cameraX, ORB_DEFAULTS.cameraX)
   Helpers.RefreshSliderFromConfig(e.cameraYSlider, comboCfg.cameraY, ORB_DEFAULTS.cameraY)
   Helpers.RefreshSliderFromConfig(e.cameraZSlider, comboCfg.cameraZ, ORB_DEFAULTS.cameraZ)
@@ -695,6 +706,7 @@ function OrbResourceTab:Reset()
   comboCfg.x = nil
   comboCfg.y = nil
   comboCfg.radius = nil
+  comboCfg.orbSize = nil
   comboCfg.cameraX = nil
   comboCfg.cameraY = nil
   comboCfg.cameraZ = nil
@@ -719,6 +731,10 @@ function OrbResourceTab:Reset()
   if e.radiusSlider and e.radiusSlider.slider then 
     e.radiusSlider.slider:SetValue(ORB_DEFAULTS.radius)
     if e.radiusSlider.UpdateDisplay then e.radiusSlider.UpdateDisplay(ORB_DEFAULTS.radius) end
+  end
+  if e.sizeSlider and e.sizeSlider.slider then
+    e.sizeSlider.slider:SetValue(ORB_DEFAULTS.orbSize)
+    if e.sizeSlider.UpdateDisplay then e.sizeSlider.UpdateDisplay(ORB_DEFAULTS.orbSize) end
   end
   if e.cameraXSlider and e.cameraXSlider.slider then 
     e.cameraXSlider.slider:SetValue(ORB_DEFAULTS.cameraX)
