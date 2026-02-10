@@ -302,7 +302,7 @@ function CastBarTab:Create()
   e.colorSection = Helpers.CreateSectionFrame(self.parent, "WiseHudCastColorSection", "Color Settings", 500, 150)
   yOffset = Helpers.AnchorSectionWithTitle(self.parent, e.colorSection, yOffset, {
     contentHeight = 180,
-    -- Use a small extra spacing so the reset button sitzt näher an der Section.
+    -- Use a small extra spacing so the reset button sits closer to the section.
     spacingBelow = 0,
   })
   

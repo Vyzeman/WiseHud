@@ -59,12 +59,10 @@ WiseHud:SetScript("OnEvent", function(self, event, ...)
       WiseHudCore_OnHealthEvent(unit)
     end
   elseif event == "PLAYER_REGEN_DISABLED" then
-    -- Combat started
     if WiseHudCore_OnCombatStateChanged then
       WiseHudCore_OnCombatStateChanged(true)
     end
   elseif event == "PLAYER_REGEN_ENABLED" then
-    -- Combat ended
     if WiseHudCore_OnCombatStateChanged then
       WiseHudCore_OnCombatStateChanged(false)
     end

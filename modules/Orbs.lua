@@ -804,6 +804,25 @@ local function GetMaxPoints()
   return MAX_POINTS
 end
 
+-- Hide and fully reset all existing orb frames and their animations.
+local function ResetOrbs()
+  if #orbs == 0 then
+    return
+  end
+
+  for _, orb in ipairs(orbs) do
+    if orb then
+      orb:Hide()
+      if orb.fallbackTexture then
+        orb.fallbackTexture:Hide()
+      end
+    end
+  end
+
+  orbs = {}
+  orbAnimations = {}
+end
+
 local function CreateOrbs()
   if not WiseHudFrame then
     return
@@ -816,15 +835,9 @@ local function CreateOrbs()
   if #orbs > 0 then
     local maxPoints = GetMaxPoints()
     if #orbs ~= maxPoints then
-      for i, orb in ipairs(orbs) do
-        if orb then
-          orb:Hide()
-          if orb.fallbackTexture then orb.fallbackTexture:Hide() end
-        end
-      end
-      orbs = {}
-      orbAnimations = {}
+      ResetOrbs()
     else
+      local modelPath = GetModelPath()
       for i, orb in ipairs(orbs) do
         if orb and orb.GetModelFileID then
           local ok, fileID = pcall(orb.GetModelFileID, orb)
@@ -832,7 +845,6 @@ local function CreateOrbs()
             fileID = nil
           end
           if not fileID or fileID == 0 then
-            local modelPath = GetModelPath()
             if ApplyModelToOrb(orb, modelPath) then
               ConfigureOrbModel(orb)
             end
@@ -849,6 +861,7 @@ local function CreateOrbs()
   local orbSize = GetOrbSize()
   WiseHudFrame:SetSize(radius * 2 + orbSize, radius * 2 + orbSize)
 
+  local modelPath = GetModelPath()
   for i = 1, maxPoints do
     local orb = CreateFrame("PlayerModel", "WiseHudOrb"..i, parentFrame)
     orb.orbIndex = i
@@ -857,7 +870,6 @@ local function CreateOrbs()
     orb:SetFrameLevel(20)
     orb:SetKeepModelOnHide(true)
 
-    local modelPath = GetModelPath()
     local modelLoaded = ApplyModelToOrb(orb, modelPath)
     if modelLoaded then
       AfterModelApplied(orb)
@@ -1165,16 +1177,7 @@ function WiseHudOrbs_OnPlayerLogin()
   cfg.testMode = nil
   orbsReinitializedAfterFirstPoints = false
   
-  if #orbs > 0 then
-    for i, orb in ipairs(orbs) do
-      if orb then
-        orb:Hide()
-        if orb.fallbackTexture then orb.fallbackTexture:Hide() end
-      end
-    end
-    orbs = {}
-    orbAnimations = {}
-  end
+  ResetOrbs()
 
   -- Delay orb creation slightly after login/reload so the game client and
   -- other addons have time to finish their own model/camera initialization.
@@ -1230,14 +1233,7 @@ local function HandleOrbResourceChanged()
     orbsReinitializedAfterFirstPoints = true
 
     -- Hard reset existing orbs
-    for i, orb in ipairs(orbs) do
-      if orb then
-        orb:Hide()
-        if orb.fallbackTexture then orb.fallbackTexture:Hide() end
-      end
-    end
-    orbs = {}
-    orbAnimations = {}
+    ResetOrbs()
 
     -- Rebuild + apply camera + update layout
     CreateOrbs()
