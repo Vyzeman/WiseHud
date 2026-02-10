@@ -650,6 +650,44 @@ local POWER_TYPE_PAIN = 18
 local currentPowerType = nil
 local currentMaxPoints = MAX_POINTS
 
+-- Death Knight rune support
+local MAX_RUNES = 6
+
+local function IsDeathKnight()
+  local _, class = UnitClass("player")
+  if not class then
+    return false
+  end
+  return string.upper(class) == "DEATHKNIGHT"
+end
+
+-- Returns (readyRunes, totalRunes)
+local function GetRunePoints()
+  local getRuneCooldown = _G and _G.GetRuneCooldown or nil
+  if not getRuneCooldown or not IsDeathKnight() then
+    return 0, MAX_RUNES
+  end
+
+  local ready = 0
+  local total = 0
+
+  for i = 1, MAX_RUNES do
+    local start, duration, runeReady = getRuneCooldown(i)
+    if start ~= nil then
+      total = total + 1
+      if runeReady or duration == 0 then
+        ready = ready + 1
+      end
+    end
+  end
+
+  if total == 0 then
+    total = MAX_RUNES
+  end
+
+  return ready, total
+end
+
 function GetPowerTypeForClass()
   local _, class = UnitClass("player")
   if not class then return nil end
@@ -689,6 +727,15 @@ function GetPowerTypeForClass()
 end
 
 local function GetMaxPoints()
+  -- Death Knight: use runes (always up to MAX_RUNES)
+  if IsDeathKnight() then
+    local _, totalRunes = GetRunePoints()
+    if totalRunes and totalRunes > 0 then
+      currentMaxPoints = totalRunes
+      return currentMaxPoints
+    end
+  end
+
   if currentMaxPoints and currentMaxPoints > 0 then
     return currentMaxPoints
   end
@@ -788,6 +835,15 @@ local function CreateOrbs()
 end
 
 local function GetComboPoints()
+  -- Death Knight: use rune count instead of UnitPower
+  if IsDeathKnight() then
+    local points, totalRunes = GetRunePoints()
+    if totalRunes and totalRunes > 0 and totalRunes ~= currentMaxPoints then
+      currentMaxPoints = totalRunes
+    end
+    return points or 0
+  end
+
   local powerType = GetPowerTypeForClass()
   
   if not powerType then
@@ -1098,50 +1154,56 @@ function WiseHudOrbs_OnPlayerLogin()
 
 end
 
+local function HandleOrbResourceChanged()
+  local points = GetComboPoints()
+
+  -- Track combo-like resource changes separately from the main
+  -- power resource so Orbs can use their own alpha fade logic.
+  if WiseHudCombatInfo then
+    if lastKnownPoints == nil or points ~= lastKnownPoints then
+      lastKnownPoints = points
+      WiseHudCombatInfo.lastOrbChange = GetTime()
+    end
+  end
+
+  -- When we see points > 0 for the first time after a fresh login/relog,
+  -- we force a one-time complete re-create of the orbs. This effectively
+  -- mirrors the behavior of a /reload and fixes cases where the client
+  -- doesn't correctly render individual PlayerModel frames.
+  if points > 0 and not orbsReinitializedAfterFirstPoints then
+    orbsReinitializedAfterFirstPoints = true
+
+    -- Hard reset existing orbs
+    for i, orb in ipairs(orbs) do
+      if orb then
+        orb:Hide()
+        if orb.fallbackTexture then orb.fallbackTexture:Hide() end
+      end
+    end
+    orbs = {}
+    orbAnimations = {}
+
+    -- Rebuild + apply camera + update layout
+    CreateOrbs()
+    if WiseHudOrbs_UpdateCameraPosition then
+      WiseHudOrbs_UpdateCameraPosition()
+    end
+  end
+
+  UpdateOrbs()
+end
+
 function WiseHudOrbs_OnPowerUpdate(unit, powerType)
   if unit ~= "player" then return end
   
   if powerType then
     local currentType = GetPowerTypeForClass()
     if powerType == currentType or IsComboPointType(powerType) then
-      -- When we see points > 0 for the first time after a fresh login/relog,
-      -- we force a one-time complete re-create of the orbs. This effectively
-      -- mirrors the behavior of a /reload and fixes cases where the client
-      -- doesn't correctly render individual PlayerModel frames.
-      local points = GetComboPoints()
-
-      -- Track combo-like resource changes separately from the main
-      -- power resource so Orbs can use their own alpha fade logic.
-      if WiseHudCombatInfo then
-        if lastKnownPoints == nil or points ~= lastKnownPoints then
-          lastKnownPoints = points
-          WiseHudCombatInfo.lastOrbChange = GetTime()
-        end
-      end
-      if points > 0 and not orbsReinitializedAfterFirstPoints then
-        orbsReinitializedAfterFirstPoints = true
-
-        -- Hard reset existing orbs
-        for i, orb in ipairs(orbs) do
-          if orb then
-            orb:Hide()
-            if orb.fallbackTexture then orb.fallbackTexture:Hide() end
-          end
-        end
-        orbs = {}
-        orbAnimations = {}
-
-        -- Rebuild + apply camera + update layout
-        CreateOrbs()
-        if WiseHudOrbs_UpdateCameraPosition then
-          WiseHudOrbs_UpdateCameraPosition()
-        end
-      end
-
-      UpdateOrbs()
+      HandleOrbResourceChanged()
     end
   else
-    UpdateOrbs()
+    -- Used by options UI and by rune events, where no powerType is provided.
+    HandleOrbResourceChanged()
   end
 end
 

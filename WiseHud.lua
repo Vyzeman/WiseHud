@@ -43,6 +43,11 @@ WiseHud:SetScript("OnEvent", function(self, event, ...)
     if WiseHudOrbs_OnPowerUpdate then
       WiseHudOrbs_OnPowerUpdate(unit, powerType)
     end
+  elseif event == "RUNE_POWER_UPDATE" then
+    -- Death Knight runes: treat as orb resource updates driven by rune count.
+    if WiseHudOrbs_OnPowerUpdate then
+      WiseHudOrbs_OnPowerUpdate("player")
+    end
   elseif event == "UNIT_MAXPOWER" or event == "UNIT_DISPLAYPOWER" then
     local unit = ...
     if WiseHudPower_OnPowerEvent then
@@ -128,6 +133,7 @@ end)
 WiseHud:RegisterEvent("PLAYER_LOGIN")
 WiseHud:RegisterEvent("UNIT_POWER_UPDATE")
 WiseHud:RegisterEvent("UNIT_POWER_FREQUENT")
+WiseHud:RegisterEvent("RUNE_POWER_UPDATE")
 WiseHud:RegisterEvent("UNIT_MAXPOWER")
 WiseHud:RegisterEvent("UNIT_DISPLAYPOWER")
 WiseHud:RegisterEvent("UNIT_HEALTH")
