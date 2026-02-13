@@ -1,24 +1,26 @@
 # WiseHud
 
-A customizable Heads-Up Display (HUD) addon for World of Warcraft that displays health, power/resource bars, and combo point orbs in an elegant, configurable interface.
+A customizable Heads-Up Display (HUD) addon for World of Warcraft that shows health, power/resources, and class resource orbs in an elegant, configurable interface.
 
 ## Features
 
 ### Health & Power Bars
 - Vertical health and power bars with customizable positioning
-- Smooth alpha transitions based on combat state and recent changes
+- Smooth alpha transitions based on combat state
 - Configurable size, position, and offset
-- Support for all power types (Mana, Energy, Rage, Focus, etc.) with appropriate colors
+- Support for all power types (Mana, Energy, Rage, Focus, Runic Power, etc.) with appropriate colors
 
-### Combo Point Orbs
-- Dynamic combo point display using 3D models
+### Resource Orbs
+- Dynamic resource / combo point display using 3D models
 - Supports multiple classes:
   - **Rogue**: Combo Points
   - **Monk**: Chi
   - **Warlock**: Soul Shards
   - **Paladin**: Holy Power
   - **Druid (Feral)**: Combo Points
+  - **Death Knight**: Runes / Runic Power visualization
 - Circular arrangement with configurable radius and center position
+- Configurable orb size to better match your personal UI scale
 - Smooth animations for orb appearance and updates
 - Automatic detection of class and specialization
 
@@ -30,7 +32,7 @@ A customizable Heads-Up Display (HUD) addon for World of Warcraft that displays 
 
 ### Options Panel
 - Three-tab interface for organized settings:
-  - **Orb Resource**: Combo point/orb configuration
+  - **Orb Resource**: Resource / orb configuration
   - **Health/Power**: Health and power bar settings
   - **Cast Bar**: Cast bar configuration and appearance
 - Individual enable/disable toggles for each module
@@ -82,7 +84,7 @@ All settings are stored in `WiseHudDB` and persist across sessions.
 
 ## Version
 
-Current Version: **1.1.0-beta**
+Current Version: **1.1.1**
 
 ## Author
 

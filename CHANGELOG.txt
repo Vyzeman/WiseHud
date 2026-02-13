@@ -1,6 +1,10 @@
 WiseHud Changelog
 =================
 
+Version 1.1.1
+-------------
+- Tweaked rune handling for Death Knights for more accurate updates.
+
 Version 1.1.0-beta
 ------------------
 - Added Death Knight support for resource orbs.
