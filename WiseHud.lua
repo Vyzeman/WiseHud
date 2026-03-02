@@ -58,6 +58,11 @@ WiseHud:SetScript("OnEvent", function(self, event, ...)
     if WiseHudCore_OnHealthEvent then
       WiseHudCore_OnHealthEvent(unit)
     end
+  elseif event == "UNIT_ABSORB_AMOUNT_CHANGED" then
+    local unit = ...
+    if WiseHudCore_OnHealthEvent then
+      WiseHudCore_OnHealthEvent(unit)
+    end
   elseif event == "PLAYER_REGEN_DISABLED" then
     if WiseHudCore_OnCombatStateChanged then
       WiseHudCore_OnCombatStateChanged(true)
@@ -136,6 +141,7 @@ WiseHud:RegisterEvent("UNIT_MAXPOWER")
 WiseHud:RegisterEvent("UNIT_DISPLAYPOWER")
 WiseHud:RegisterEvent("UNIT_HEALTH")
 WiseHud:RegisterEvent("UNIT_MAXHEALTH")
+WiseHud:RegisterEvent("UNIT_ABSORB_AMOUNT_CHANGED")
 WiseHud:RegisterEvent("PLAYER_REGEN_ENABLED")
 WiseHud:RegisterEvent("PLAYER_REGEN_DISABLED")
 WiseHud:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED")

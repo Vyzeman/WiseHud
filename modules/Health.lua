@@ -7,14 +7,21 @@ local WiseHud = WiseHudFrame
 -- Central defaults (shared with Power, provided by Core)
 local HP_DEFAULTS = WiseHudHP_DEFAULTS or WiseHudConfig.GetHealthPowerDefaults()
 
--- Forward declarations for health bar frames and alpha state
-local healthBar, healthBG
+local healthBar, healthBG, absorbBar
 local currentAlpha = 0
 local targetAlpha  = 0
 
 -- Use flipped foreground texture so the fill follows the inner curve
 local HEALTH_TEXTURE   = "Interface\\AddOns\\WiseHud\\textures\\CleanCurves-flipped"
 local HEALTH_BG        = "Interface\\AddOns\\WiseHud\\textures\\CleanCurvesBG"
+
+-- Light overlay color for absorbs (rendered behind the main health bar)
+local DEFAULT_ABSORB_COLOR_R = 0.95
+local DEFAULT_ABSORB_COLOR_G = 0.95
+local DEFAULT_ABSORB_COLOR_B = 0.95
+
+-- Local alias for the absorb API (may be nil on very old clients)
+local UnitGetTotalAbsorbs = UnitGetTotalAbsorbs
 
 -- Default health bar color (from central defaults, based on IceHUD PlayerHealth)
 local DEFAULT_HEALTH_COLOR_R = (HP_DEFAULTS.colors.health.r or 37) / 255
@@ -49,6 +56,9 @@ function WiseHudHealth_ApplyAlpha()
   if not IsHealthEnabled() then
     healthBar:Hide()
     healthBG:Hide()
+    if absorbBar then
+      absorbBar:Hide()
+    end
     return
   end
 
@@ -60,6 +70,9 @@ function WiseHudHealth_ApplyAlpha()
     currentAlpha = targetAlpha
     healthBar:SetAlpha(currentAlpha)
     healthBG:SetAlpha(currentAlpha)
+    if absorbBar then
+      absorbBar:SetAlpha(currentAlpha)
+    end
   end
 end
 
@@ -71,6 +84,9 @@ function WiseHudHealth_UpdateAlpha(elapsed)
 
   healthBar:SetAlpha(currentAlpha)
   healthBG:SetAlpha(currentAlpha)
+  if absorbBar then
+    absorbBar:SetAlpha(currentAlpha)
+  end
 end
 
 function WiseHudHealth_ApplyLayout()
@@ -97,6 +113,29 @@ function WiseHudHealth_ApplyLayout()
   healthBar:Show()
 end
 
+-- Update the absorb overlay so it reflects current absorbs.
+-- WoW 12.0 Secret Values:
+-- Treat the return value from UnitGetTotalAbsorbs as an opaque value
+-- and avoid doing any math or comparisons with it. We only pass it
+-- directly into the status bar API to avoid secret-value errors.
+local function UpdateAbsorb(hp, hpMax)
+  if not absorbBar or not UnitGetTotalAbsorbs then return end
+  if not hpMax or hpMax <= 0 then
+    absorbBar:Hide()
+    return
+  end
+
+  local totalAbsorbs = UnitGetTotalAbsorbs("player")
+  if not totalAbsorbs then
+    absorbBar:Hide()
+    return
+  end
+
+  absorbBar:SetMinMaxValues(0, hpMax)
+  absorbBar:SetValue(totalAbsorbs)
+  absorbBar:Show()
+end
+
 local function CreateHealthBar()
   if healthBar then return end
   if not WiseHud then return end
@@ -114,6 +153,20 @@ local function CreateHealthBar()
   healthBar:SetMinMaxValues(0, 1)
   healthBar:SetValue(1)
 
+  -- Absorb overlay bar (sits above the main health bar)
+  absorbBar = CreateFrame("StatusBar", "WiseHudAbsorb", healthBar)
+  absorbBar:SetStatusBarTexture(HEALTH_TEXTURE)
+  absorbBar:SetOrientation("VERTICAL")
+  -- No reverse fill: grows like the main health bar from bottom to top
+  absorbBar:SetStatusBarColor(DEFAULT_ABSORB_COLOR_R, DEFAULT_ABSORB_COLOR_G, DEFAULT_ABSORB_COLOR_B)
+  absorbBar:SetMinMaxValues(0, 1)
+  absorbBar:SetValue(0)
+  absorbBar:SetFrameStrata(healthBar:GetFrameStrata())
+  absorbBar:SetFrameLevel(healthBar:GetFrameLevel() + 1)
+  absorbBar:ClearAllPoints()
+  absorbBar:SetAllPoints(healthBar)
+  absorbBar:Hide()
+
   -- Apply layout (size/position)
   WiseHudHealth_ApplyLayout()
   WiseHudHealth_ApplyAlpha()
@@ -121,6 +174,9 @@ local function CreateHealthBar()
   currentAlpha = targetAlpha
   healthBar:SetAlpha(currentAlpha)
   healthBG:SetAlpha(currentAlpha)
+  if absorbBar then
+    absorbBar:SetAlpha(currentAlpha)
+  end
 end
 
 local function UpdateHealth()
@@ -131,6 +187,9 @@ local function UpdateHealth()
     healthBar:SetMinMaxValues(0, hpMax)
     -- Directly set the player health value (no smoothing, avoids secret-value math issues)
     healthBar:SetValue(hp)
+    UpdateAbsorb(hp, hpMax)
+  elseif absorbBar then
+    absorbBar:Hide()
   end
 
   WiseHudHealth_ApplyAlpha()
