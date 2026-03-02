@@ -27,6 +27,12 @@ local orbsReinitializedAfterFirstPoints = false -- for relog fix: one-time re-cr
 local orbsCameraReady = false
 local cameraStabilizeTicker = nil
 
+-- WoW 12.0 secret predicates for power APIs. These tell us when
+-- UnitPower/UnitPowerMax return secret values that addons must not
+-- do math/comparisons with.
+local ShouldUnitPowerBeSecret = _G.ShouldUnitPowerBeSecret
+local ShouldUnitPowerMaxBeSecret = _G.ShouldUnitPowerMaxBeSecret
+
 -- Default camera position (X, Y, Z) from central config
 local DEFAULT_CAMERA_X = ORB_DEFAULTS.cameraX
 local DEFAULT_CAMERA_Y = ORB_DEFAULTS.cameraY
@@ -560,24 +566,9 @@ local function InitializeOrbsCameraAfterLogin()
   if not orbs or #orbs == 0 then
     return
   end
-
-  -- Only activate if we really log in with 0 points.
-  -- IMPORTANT: Do NOT use the Blizzard API GetComboPoints(unit, target) here,
-  -- but use our own helper logic directly via PowerType/UnitPower,
-  -- to avoid argument errors.
-  local points = 0
-  if GetPowerTypeForClass then
-    local powerType = GetPowerTypeForClass()
-    if powerType then
-      local maxPower = UnitPowerMax("player", powerType)
-      if maxPower and maxPower > 0 then
-        points = UnitPower("player", powerType) or 0
-      end
-    end
-  end
-  if points > 0 then return end
-
-  -- Load models and set camera, even if all orbs are hidden.
+  -- Load models and set camera once after login; this is safe even
+  -- when the player already has resources, and avoids having to read
+  -- potentially secret UnitPower values at login.
   WaitForModelsAndSetCamera()
 end
 
@@ -795,6 +786,13 @@ local function GetMaxPoints()
   end
   local powerType = GetPowerTypeForClass()
   if powerType then
+    -- If Blizzard marks this power as secret, don't probe it. Fall
+    -- back to the last known/maxPoints fallback instead of causing
+    -- secret-value errors.
+    if ShouldUnitPowerMaxBeSecret and ShouldUnitPowerMaxBeSecret("player", powerType) then
+      return currentMaxPoints or MAX_POINTS
+    end
+
     local maxPower = UnitPowerMax("player", powerType)
     if maxPower and maxPower > 0 then
       currentMaxPoints = maxPower
@@ -920,12 +918,21 @@ local function GetComboPoints()
   
   if currentPowerType ~= powerType then
     currentPowerType = powerType
-    local maxPower = UnitPowerMax("player", powerType)
-    if maxPower and maxPower > 0 then
-      currentMaxPoints = maxPower
+    if not (ShouldUnitPowerMaxBeSecret and ShouldUnitPowerMaxBeSecret("player", powerType)) then
+      local maxPower = UnitPowerMax("player", powerType)
+      if maxPower and maxPower > 0 then
+        currentMaxPoints = maxPower
+      end
     end
   end
   
+  -- Respect Blizzard's secret predicate: if this power is marked
+  -- secret, we must not read/compare it. Treat as 0 points in that
+  -- case so Orbs simply stay hidden instead of erroring.
+  if ShouldUnitPowerBeSecret and ShouldUnitPowerBeSecret("player", powerType) then
+    return 0
+  end
+
   local maxPower = UnitPowerMax("player", powerType)
   if maxPower and maxPower > 0 then
     local points = UnitPower("player", powerType)
@@ -1033,6 +1040,13 @@ function UpdateOrbs()
   end
 
   local points = GetComboPoints()
+  -- WoW 12.0 SecretValues: if this value is secret, we must not
+  -- compare or do math with it. Use Blizzard's canaccessvalue()
+  -- helper to detect this and treat it as 0 points instead.
+  local canaccessvalue = _G.canaccessvalue
+  if canaccessvalue and not canaccessvalue(points) then
+    points = 0
+  end
   local maxPoints = GetMaxPoints()
   
   -- If camera is not yet initialized, keep orbs completely hidden
