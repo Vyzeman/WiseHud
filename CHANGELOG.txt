@@ -1,6 +1,11 @@
 WiseHud Changelog
 =================
 
+Version 1.1.2
+-------------
+- Added absorb handling to the health bar to better visualize shields.
+- Updated orb handling to support WoW 12.0 secret predicates.
+
 Version 1.1.1
 -------------
 - Tweaked rune handling for Death Knights for more accurate updates.

@@ -84,7 +84,7 @@ All settings are stored in `WiseHudDB` and persist across sessions.
 
 ## Version
 
-Current Version: **1.1.1**
+Current Version: **1.1.2**
 
 ## Author
 
