@@ -1,6 +1,10 @@
 WiseHud Changelog
 =================
 
+Version 1.1.3
+-------------
+- Updated Interface version to 120005.
+
 Version 1.1.2
 -------------
 - Added absorb handling to the health bar to better visualize shields.

@@ -75,7 +75,7 @@ Access the options panel through:
 
 ## Requirements
 
-- World of Warcraft: The War Within (Interface version 120000)
+- World of Warcraft: The War Within (Interface version 120005)
 - **LibSharedMedia-3.0** (optional, for custom cast bar textures)
 
 ## Saved Variables
@@ -84,7 +84,7 @@ All settings are stored in `WiseHudDB` and persist across sessions.
 
 ## Version
 
-Current Version: **1.1.2**
+Current Version: **1.1.3**
 
 ## Author
 
