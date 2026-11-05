@@ -102,6 +102,39 @@ See LICENSE file for details.
 - Uses resources from IceHUD
 - Uses custom textures for the bar graphics
 
+## Creating a Release
+
+WiseHud uses automated packaging and deployment to CurseForge via GitHub Actions.
+
+### Prerequisites
+
+The repository owner must add a CurseForge API token as a GitHub Actions secret named `CF_API_KEY`:
+1. Generate an API token from your CurseForge account
+2. Go to the repository Settings → Secrets and variables → Actions
+3. Add a new repository secret named `CF_API_KEY` with your token
+
+### Release Process
+
+To create a new release:
+
+```bash
+git tag 1.1.5
+git push origin 1.1.5
+```
+
+The GitHub Actions workflow will automatically:
+- Package the addon using the BigWigsMods packager
+- Upload the release to CurseForge (project ID: 1446690)
+- Create a GitHub release with the packaged addon
+
+The tag version (e.g., `1.1.5`) will be automatically substituted into the TOC files' `## Version:` field.
+
+### Important Notes
+
+- Only push tags when you're ready to release - each tag push triggers a new CurseForge upload
+- The version in the TOC files uses `@project-version@` which is replaced by the packager during build
+- During development (non-packaged), the addon will show "@project-version@" as its version, which is normal
+
 ## Support
 
 For issues, suggestions, or contributions, please visit the project repository.

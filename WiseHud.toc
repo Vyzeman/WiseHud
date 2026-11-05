@@ -2,12 +2,13 @@
 ## Title: WiseHud
 ## Notes: Customizable HUD displaying health, power, and combo point orbs with smooth animations.
 ## Author: Wiseman
-## Version: 1.1.4
+## Version: @project-version@
 ## SavedVariablesPerCharacter: WiseHudDB
 ## OptionalDeps: LibSharedMedia-3.0
 ## X-Category: Combat
 ## X-Website: 
 ## X-License: MIT
+## X-Curse-Project-ID: 1446690
 
 # LibStub (must load first)
 libs\LibStub\LibStub.lua
