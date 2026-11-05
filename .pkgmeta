@@ -1,2 +1,12 @@
+package-as: WiseHud
+
 manual-changelog: CHANGELOG.txt
+
+ignore:
+  - README.md
+  - LICENSE
+  - WiseHud_Logo.png
+  - .github
+  - .git
+  - .gitignore
 
