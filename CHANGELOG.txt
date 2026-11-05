@@ -1,6 +1,11 @@
 WiseHud Changelog
 =================
 
+Version 1.1.4
+-------------
+- Added WoW Forever support (Interface 16001) via WiseHud_Forever.toc.
+- Guarded secret health, power, and cast values so the HUD keeps updating on Forever.
+
 Version 1.1.3
 -------------
 - Updated Interface version to 120005.

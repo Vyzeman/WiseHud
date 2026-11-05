@@ -25,8 +25,10 @@ function WiseHudCore_OnPowerEvent(unit, powerType)
 
     -- Depending on the client, the event provides either the token ("MANA", "ENERGY", ...)
     -- or the numeric index. We only accept it when it matches the player's
-    -- current primary resource.
-    if powerType == currentToken or powerType == currentType then
+    -- current primary resource. A secret token cannot be compared, so treat
+    -- that update as a primary resource change and still refresh the fade.
+    local secretType = WiseHud_IsSecret(powerType) or WiseHud_IsSecret(currentType) or WiseHud_IsSecret(currentToken)
+    if secretType or powerType == currentToken or powerType == currentType then
       WiseHudCombatInfo.lastPowerChange = GetTime()
     end
   end

@@ -43,6 +43,7 @@ A customizable Heads-Up Display (HUD) addon for World of Warcraft that shows hea
 
 1. Download the latest release
 2. Extract the `WiseHud` folder to your `World of Warcraft\_retail_\Interface\AddOns\` directory
+   - For WoW Forever, use the Forever client folder instead, typically `World of Warcraft\_forever_\Interface\AddOns\`
 3. Restart World of Warcraft or type `/reload` in-game
 4. Open the options panel via the AddOns menu or type `/wisehud` (if slash command is implemented)
 
@@ -75,7 +76,8 @@ Access the options panel through:
 
 ## Requirements
 
-- World of Warcraft: The War Within (Interface version 120005)
+- World of Warcraft Retail (Interface version 120005)
+- World of Warcraft: Forever (Interface version 16001, via `WiseHud_Forever.toc`)
 - **LibSharedMedia-3.0** (optional, for custom cast bar textures)
 
 ## Saved Variables
@@ -84,7 +86,7 @@ All settings are stored in `WiseHudDB` and persist across sessions.
 
 ## Version
 
-Current Version: **1.1.3**
+Current Version: **1.1.4**
 
 ## Author
 

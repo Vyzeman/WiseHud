@@ -257,8 +257,35 @@ function WiseHudCast_ApplyLayout()
   end
 end
 
+local function IsSecret(value)
+  return WiseHud_IsSecret and WiseHud_IsSecret(value)
+end
+
+-- Player casts are normally readable. If a client seals the timestamps,
+-- keep the bar visible and skip the progress math.
+local function ApplyCastWindow(startTime, endTime)
+  if IsSecret(startTime) or IsSecret(endTime) then
+    castDuration = 0
+    return false
+  end
+  castStartTime = startTime / 1000
+  castEndTime = endTime / 1000
+  castDuration = castEndTime - castStartTime
+  return castDuration > 0
+end
+
+local function HasReadableCastName(name)
+  if IsSecret(name) then
+    return true
+  end
+  return name ~= nil and name ~= ""
+end
+
 function WiseHudCast_Update(elapsed)
   if not castBar or not isCasting and not isChanneling then
+    return
+  end
+  if castDuration == nil or castDuration <= 0 or IsSecret(castEndTime) or IsSecret(castDuration) then
     return
   end
 
@@ -302,15 +329,13 @@ function WiseHudCast_OnSpellCastStart(unit, castGUID, spellID)
   if not IsCastEnabled() then return end
 
   local name, text, texture, startTime, endTime, isTradeSkill, castID, notInterruptible, spellId = UnitCastingInfo("player")
-  if not name then
+  if not HasReadableCastName(name) then
     return
   end
 
   isCasting = true
   isChanneling = false
-  castStartTime = startTime / 1000
-  castEndTime = endTime / 1000
-  castDuration = castEndTime - castStartTime
+  ApplyCastWindow(startTime, endTime)
   castSpellName = name
   castSpellIcon = texture
 
@@ -319,14 +344,14 @@ function WiseHudCast_OnSpellCastStart(unit, castGUID, spellID)
     castBar:SetStatusBarColor(fillR, fillG, fillB)
     castBar:SetValue(0)
     if castBar.text then
-      if IsTextEnabled() then
+      if IsTextEnabled() and not IsSecret(name) then
         castBar.text:SetText(name)
         castBar.text:Show()
       else
         castBar.text:Hide()
       end
     end
-    if castIcon and texture then
+    if castIcon and not IsSecret(texture) and texture then
       castIcon:SetTexture(texture)
       castIcon:Show()
     end
@@ -343,7 +368,7 @@ function WiseHudCast_OnSpellCastStop(unit, castGUID, spellID)
   if isChanneling then
     -- Verify that we're still actually channeling
     local name = UnitChannelInfo("player")
-    if name then
+    if HasReadableCastName(name) then
       -- Still channeling, ignore this stop event
       return
     end
@@ -356,11 +381,11 @@ function WiseHudCast_OnSpellCastStop(unit, castGUID, spellID)
   -- previous cast and must not hide the current cast bar.
   do
     local activeCast = UnitCastingInfo("player")
-    if activeCast then
+    if HasReadableCastName(activeCast) then
       return
     end
     local activeChannel = UnitChannelInfo("player")
-    if activeChannel then
+    if HasReadableCastName(activeChannel) then
       return
     end
   end
@@ -381,7 +406,7 @@ function WiseHudCast_OnSpellCastFailed(unit, castGUID, spellID)
   -- If we're channeling, ignore failed events (they can be false positives)
   if isChanneling then
     local name = UnitChannelInfo("player")
-    if name then
+    if HasReadableCastName(name) then
       -- Still channeling, ignore this failed event
       return
     end
@@ -391,11 +416,11 @@ function WiseHudCast_OnSpellCastFailed(unit, castGUID, spellID)
   -- event is most likely stale and must not affect the new cast bar.
   do
     local activeCast = UnitCastingInfo("player")
-    if activeCast then
+    if HasReadableCastName(activeCast) then
       return
     end
     local activeChannel = UnitChannelInfo("player")
-    if activeChannel then
+    if HasReadableCastName(activeChannel) then
       return
     end
   end
@@ -409,7 +434,7 @@ function WiseHudCast_OnSpellCastFailed(unit, castGUID, spellID)
       if castBar then
         -- A new cast/channel might have started in the meantime. In that case,
         -- the new cast bar must not be hidden by this old FAIL timer.
-        if UnitCastingInfo("player") or UnitChannelInfo("player") then
+        if HasReadableCastName(UnitCastingInfo("player")) or HasReadableCastName(UnitChannelInfo("player")) then
           return
         end
         castBar:Hide()
@@ -426,7 +451,7 @@ function WiseHudCast_OnSpellCastInterrupted(unit, castGUID, spellID)
   -- If we're channeling, check if it's really interrupted
   if isChanneling then
     local name = UnitChannelInfo("player")
-    if name then
+    if HasReadableCastName(name) then
       -- Still channeling, not actually interrupted (might be from double-press)
       return
     end
@@ -447,10 +472,8 @@ function WiseHudCast_OnSpellCastDelayed(unit, castGUID, spellID)
   if not isCasting then return end
 
   local name, text, texture, startTime, endTime = UnitCastingInfo("player")
-  if name then
-    castStartTime = startTime / 1000
-    castEndTime = endTime / 1000
-    castDuration = castEndTime - castStartTime
+  if HasReadableCastName(name) then
+    ApplyCastWindow(startTime, endTime)
   end
 end
 
@@ -459,15 +482,13 @@ function WiseHudCast_OnSpellCastChannelStart(unit, castGUID, spellID)
   if not IsCastEnabled() then return end
 
   local name, text, texture, startTime, endTime, isTradeSkill, notInterruptible, spellId = UnitChannelInfo("player")
-  if not name then
+  if not HasReadableCastName(name) then
     return
   end
 
   isCasting = false
   isChanneling = true
-  castStartTime = startTime / 1000
-  castEndTime = endTime / 1000
-  castDuration = castEndTime - castStartTime
+  ApplyCastWindow(startTime, endTime)
   castSpellName = name
   castSpellIcon = texture
 
@@ -476,14 +497,14 @@ function WiseHudCast_OnSpellCastChannelStart(unit, castGUID, spellID)
     castBar:SetStatusBarColor(fillR, fillG, fillB)
     castBar:SetValue(1)
     if castBar.text then
-      if IsTextEnabled() then
+      if IsTextEnabled() and not IsSecret(name) then
         castBar.text:SetText(name)
         castBar.text:Show()
       else
         castBar.text:Hide()
       end
     end
-    if castIcon and texture then
+    if castIcon and not IsSecret(texture) and texture then
       castIcon:SetTexture(texture)
       castIcon:Show()
     end
@@ -497,10 +518,8 @@ function WiseHudCast_OnSpellCastChannelUpdate(unit, castGUID, spellID)
   if not isChanneling then return end
 
   local name, text, texture, startTime, endTime = UnitChannelInfo("player")
-  if name then
-    castStartTime = startTime / 1000
-    castEndTime = endTime / 1000
-    castDuration = castEndTime - castStartTime
+  if HasReadableCastName(name) then
+    ApplyCastWindow(startTime, endTime)
   end
 end
 

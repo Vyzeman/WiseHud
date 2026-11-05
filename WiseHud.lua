@@ -2,6 +2,12 @@ local ADDON_NAME = ...
 
 WiseHudDB = WiseHudDB or {}
 
+-- True when a Midnight/Forever API returned a secret value.
+-- Secret values may be stored and passed to widgets, but not compared.
+function WiseHud_IsSecret(value)
+  return type(issecretvalue) == "function" and issecretvalue(value) or false
+end
+
 local WiseHud = CreateFrame("Frame", "WiseHudFrame", UIParent)
 
 -- Frame layout
@@ -133,25 +139,30 @@ WiseHud:SetScript("OnUpdate", function(self, elapsed)
   end
 end)
 
-WiseHud:RegisterEvent("PLAYER_LOGIN")
-WiseHud:RegisterEvent("UNIT_POWER_UPDATE")
-WiseHud:RegisterEvent("UNIT_POWER_FREQUENT")
-WiseHud:RegisterEvent("RUNE_POWER_UPDATE")
-WiseHud:RegisterEvent("UNIT_MAXPOWER")
-WiseHud:RegisterEvent("UNIT_DISPLAYPOWER")
-WiseHud:RegisterEvent("UNIT_HEALTH")
-WiseHud:RegisterEvent("UNIT_MAXHEALTH")
-WiseHud:RegisterEvent("UNIT_ABSORB_AMOUNT_CHANGED")
-WiseHud:RegisterEvent("PLAYER_REGEN_ENABLED")
-WiseHud:RegisterEvent("PLAYER_REGEN_DISABLED")
-WiseHud:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED")
-WiseHud:RegisterEvent("UNIT_SPELLCAST_START")
-WiseHud:RegisterEvent("UNIT_SPELLCAST_STOP")
-WiseHud:RegisterEvent("UNIT_SPELLCAST_FAILED")
-WiseHud:RegisterEvent("UNIT_SPELLCAST_INTERRUPTED")
-WiseHud:RegisterEvent("UNIT_SPELLCAST_DELAYED")
-WiseHud:RegisterEvent("UNIT_SPELLCAST_CHANNEL_START")
-WiseHud:RegisterEvent("UNIT_SPELLCAST_CHANNEL_UPDATE")
-WiseHud:RegisterEvent("UNIT_SPELLCAST_CHANNEL_STOP")
-WiseHud:RegisterEvent("PLAYER_ENTERING_WORLD")
+-- Unknown events abort the file on Forever, so each registration is isolated.
+local function RegisterEventSafe(event)
+  pcall(WiseHud.RegisterEvent, WiseHud, event)
+end
+
+RegisterEventSafe("PLAYER_LOGIN")
+RegisterEventSafe("UNIT_POWER_UPDATE")
+RegisterEventSafe("UNIT_POWER_FREQUENT")
+RegisterEventSafe("RUNE_POWER_UPDATE")
+RegisterEventSafe("UNIT_MAXPOWER")
+RegisterEventSafe("UNIT_DISPLAYPOWER")
+RegisterEventSafe("UNIT_HEALTH")
+RegisterEventSafe("UNIT_MAXHEALTH")
+RegisterEventSafe("UNIT_ABSORB_AMOUNT_CHANGED")
+RegisterEventSafe("PLAYER_REGEN_ENABLED")
+RegisterEventSafe("PLAYER_REGEN_DISABLED")
+RegisterEventSafe("PLAYER_SPECIALIZATION_CHANGED")
+RegisterEventSafe("UNIT_SPELLCAST_START")
+RegisterEventSafe("UNIT_SPELLCAST_STOP")
+RegisterEventSafe("UNIT_SPELLCAST_FAILED")
+RegisterEventSafe("UNIT_SPELLCAST_INTERRUPTED")
+RegisterEventSafe("UNIT_SPELLCAST_DELAYED")
+RegisterEventSafe("UNIT_SPELLCAST_CHANNEL_START")
+RegisterEventSafe("UNIT_SPELLCAST_CHANNEL_UPDATE")
+RegisterEventSafe("UNIT_SPELLCAST_CHANNEL_STOP")
+RegisterEventSafe("PLAYER_ENTERING_WORLD")
 

@@ -718,7 +718,9 @@ local function GetRunePoints()
 
   for i = 1, MAX_RUNES do
     local start, duration, runeReady = getRuneCooldown(i)
-    if start ~= nil then
+    if WiseHud_IsSecret(start) or WiseHud_IsSecret(duration) or WiseHud_IsSecret(runeReady) then
+      -- Rune cooldown is sealed; skip this rune instead of comparing it.
+    elseif start ~= nil then
       total = total + 1
       if runeReady or duration == 0 then
         ready = ready + 1
@@ -763,7 +765,7 @@ function GetPowerTypeForClass()
   
   for _, pt in ipairs(powerTypes) do
     local maxPower = UnitPowerMax("player", pt)
-    if maxPower and maxPower > 0 then
+    if not WiseHud_IsSecret(maxPower) and maxPower and maxPower > 0 then
       return pt
     end
   end
@@ -794,7 +796,7 @@ local function GetMaxPoints()
     end
 
     local maxPower = UnitPowerMax("player", powerType)
-    if maxPower and maxPower > 0 then
+    if not WiseHud_IsSecret(maxPower) and maxPower and maxPower > 0 then
       currentMaxPoints = maxPower
       return maxPower
     end
@@ -920,7 +922,7 @@ local function GetComboPoints()
     currentPowerType = powerType
     if not (ShouldUnitPowerMaxBeSecret and ShouldUnitPowerMaxBeSecret("player", powerType)) then
       local maxPower = UnitPowerMax("player", powerType)
-      if maxPower and maxPower > 0 then
+      if not WiseHud_IsSecret(maxPower) and maxPower and maxPower > 0 then
         currentMaxPoints = maxPower
       end
     end
@@ -934,14 +936,15 @@ local function GetComboPoints()
   end
 
   local maxPower = UnitPowerMax("player", powerType)
-  if maxPower and maxPower > 0 then
-    local points = UnitPower("player", powerType)
-    if points then
-      if maxPower ~= currentMaxPoints then
-        currentMaxPoints = maxPower
-      end
-      return points
+  local points = UnitPower("player", powerType)
+  if WiseHud_IsSecret(maxPower) or WiseHud_IsSecret(points) then
+    return 0
+  end
+  if maxPower and maxPower > 0 and points then
+    if maxPower ~= currentMaxPoints then
+      currentMaxPoints = maxPower
     end
+    return points
   end
   
   return 0
@@ -1041,10 +1044,9 @@ function UpdateOrbs()
 
   local points = GetComboPoints()
   -- WoW 12.0 SecretValues: if this value is secret, we must not
-  -- compare or do math with it. Use Blizzard's canaccessvalue()
-  -- helper to detect this and treat it as 0 points instead.
+  -- compare or do math with it. Treat it as 0 points instead.
   local canaccessvalue = _G.canaccessvalue
-  if canaccessvalue and not canaccessvalue(points) then
+  if WiseHud_IsSecret(points) or (canaccessvalue and not canaccessvalue(points)) then
     points = 0
   end
   local maxPoints = GetMaxPoints()
@@ -1229,6 +1231,10 @@ end
 
 local function HandleOrbResourceChanged()
   local points = GetComboPoints()
+  if WiseHud_IsSecret(points) then
+    UpdateOrbs()
+    return
+  end
 
   -- Track combo-like resource changes separately from the main
   -- power resource so Orbs can use their own alpha fade logic.
@@ -1264,7 +1270,7 @@ function WiseHudOrbs_OnPowerUpdate(unit, powerType)
   
   if powerType then
     local currentType = GetPowerTypeForClass()
-    if powerType == currentType or IsComboPointType(powerType) then
+    if WiseHud_IsSecret(powerType) or powerType == currentType or IsComboPointType(powerType) then
       HandleOrbResourceChanged()
     end
   else

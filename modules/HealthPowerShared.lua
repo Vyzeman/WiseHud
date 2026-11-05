@@ -42,8 +42,11 @@ end
 function WiseHudHP_ComputeTargetAlpha(lastChangeField)
   local combatAlpha, nonFullAlpha, fullIdleAlpha = WiseHudHP_GetAlphaSettings()
 
+  local affectingCombat = UnitAffectingCombat("player")
   local inCombat = (WiseHudCombatInfo and WiseHudCombatInfo.inCombat)
-    or (UnitAffectingCombat("player") and true or false)
+  if not inCombat and not WiseHud_IsSecret(affectingCombat) then
+    inCombat = affectingCombat and true or false
+  end
 
   -- If the Orbs test mode is active, force combat alpha so the bars stay visible
   if WiseHudDB and WiseHudDB.comboSettings and WiseHudDB.comboSettings.testMode then

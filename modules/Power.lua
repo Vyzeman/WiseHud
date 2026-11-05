@@ -109,9 +109,10 @@ local function UpdatePower()
   local power = UnitPower("player", powerType)
   local powerMax = UnitPowerMax("player", powerType)
 
-  if powerMax and powerMax > 0 then
+  -- Primary resources (mana, energy, rage, focus) are secret in combat.
+  local secret = WiseHud_IsSecret(power) or WiseHud_IsSecret(powerMax)
+  if secret or (powerMax and powerMax > 0) then
     powerBar:SetMinMaxValues(0, powerMax)
-    -- Directly set the player power value (no smoothing, avoids secret-value math issues)
     powerBar:SetValue(power)
 
     -- Check for custom color first
@@ -123,11 +124,12 @@ local function UpdatePower()
       -- Use custom color
       powerBar:SetStatusBarColor(cfg.powerR / 255, cfg.powerG / 255, cfg.powerB / 255)
     else
-      -- Color like in IceHUD, from central config
+      -- Color like in IceHUD, from central config.
+      -- Skip the lookup when the token itself is secret.
       local clr
-      if powerToken and POWER_TYPE_COLORS[powerToken] then
+      if not WiseHud_IsSecret(powerToken) and powerToken and POWER_TYPE_COLORS[powerToken] then
         clr = POWER_TYPE_COLORS[powerToken]
-      elseif POWER_TYPE_COLORS[powerType] then
+      elseif not WiseHud_IsSecret(powerType) and POWER_TYPE_COLORS[powerType] then
         clr = POWER_TYPE_COLORS[powerType]
       end
 

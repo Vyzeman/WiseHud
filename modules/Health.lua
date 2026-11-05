@@ -114,19 +114,21 @@ function WiseHudHealth_ApplyLayout()
 end
 
 -- Update the absorb overlay so it reflects current absorbs.
--- WoW 12.0 Secret Values:
--- Treat the return value from UnitGetTotalAbsorbs as an opaque value
--- and avoid doing any math or comparisons with it. We only pass it
--- directly into the status bar API to avoid secret-value errors.
-local function UpdateAbsorb(hp, hpMax)
+-- Health and absorb amounts may be secret on Midnight and Forever.
+-- Pass them straight to the status bar and only compare plain numbers.
+local function UpdateAbsorb(hpMax)
   if not absorbBar or not UnitGetTotalAbsorbs then return end
-  if not hpMax or hpMax <= 0 then
-    absorbBar:Hide()
+
+  local totalAbsorbs = UnitGetTotalAbsorbs("player")
+  local secret = WiseHud_IsSecret(hpMax) or WiseHud_IsSecret(totalAbsorbs)
+  if secret then
+    absorbBar:SetMinMaxValues(0, hpMax)
+    absorbBar:SetValue(totalAbsorbs)
+    absorbBar:Show()
     return
   end
 
-  local totalAbsorbs = UnitGetTotalAbsorbs("player")
-  if not totalAbsorbs then
+  if not hpMax or hpMax <= 0 or not totalAbsorbs or totalAbsorbs <= 0 then
     absorbBar:Hide()
     return
   end
@@ -161,7 +163,10 @@ local function CreateHealthBar()
   absorbBar:SetStatusBarColor(DEFAULT_ABSORB_COLOR_R, DEFAULT_ABSORB_COLOR_G, DEFAULT_ABSORB_COLOR_B)
   absorbBar:SetMinMaxValues(0, 1)
   absorbBar:SetValue(0)
-  absorbBar:SetFrameStrata(healthBar:GetFrameStrata())
+  local strataOk, strata = pcall(healthBar.GetFrameStrata, healthBar)
+  if strataOk and not WiseHud_IsSecret(strata) then
+    absorbBar:SetFrameStrata(strata)
+  end
   absorbBar:SetFrameLevel(healthBar:GetFrameLevel() + 1)
   absorbBar:ClearAllPoints()
   absorbBar:SetAllPoints(healthBar)
@@ -183,11 +188,11 @@ local function UpdateHealth()
   if not healthBar then return end
   local hp = UnitHealth("player")
   local hpMax = UnitHealthMax("player")
-  if hpMax and hpMax > 0 then
+  -- Secret health must not be compared. The status bar can display it.
+  if WiseHud_IsSecret(hp) or WiseHud_IsSecret(hpMax) or (hpMax and hpMax > 0) then
     healthBar:SetMinMaxValues(0, hpMax)
-    -- Directly set the player health value (no smoothing, avoids secret-value math issues)
     healthBar:SetValue(hp)
-    UpdateAbsorb(hp, hpMax)
+    UpdateAbsorb(hpMax)
   elseif absorbBar then
     absorbBar:Hide()
   end

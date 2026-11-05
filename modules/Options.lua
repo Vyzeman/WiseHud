@@ -412,7 +412,7 @@ local function CreateOptionsPanel()
     if WiseHudFrame and WiseHudFrame.GetFrameStrata and WiseHudFrame.SetFrameStrata then
       if panel._wisehudPrevStrata == nil then
         local ok, strata = pcall(WiseHudFrame.GetFrameStrata, WiseHudFrame)
-        if ok then
+        if ok and not WiseHud_IsSecret(strata) then
           panel._wisehudPrevStrata = strata
         end
       end
